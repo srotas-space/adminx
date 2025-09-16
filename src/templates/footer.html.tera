@@ -1,0 +1,18 @@
+<!-- Footer -->
+<footer class="relative mt-8 w-full">
+  <div class="absolute inset-x-0 -top-4 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 opacity-70"></div>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <div class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow flex flex-col md:flex-row items-center justify-between gap-3 px-4 py-4">
+      <p class="text-sm text-slate-600 dark:text-slate-400">
+        © {{ now() | date(format="%Y") }} <span class="font-semibold text-slate-900 dark:text-white">AdminX</span>. All rights reserved.
+      </p>
+      <nav class="flex items-center gap-4 text-sm">
+        <a href="https://adminx.snmmaurya.com/privacy" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Privacy</a>
+        <span class="text-slate-300 dark:text-slate-600">•</span>
+        <a href="https://adminx.snmmaurya.com/terms" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Terms</a>
+        <span class="text-slate-300 dark:text-slate-600">•</span>
+        <a href="https://adminx.snmmaurya.com/support" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Support</a>
+      </nav>
+    </div>
+  </div>
+</footer>

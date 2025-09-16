@@ -1,0 +1,446 @@
+{% extends "layout.html.tera" %}
+
+{% block title %}List {{ resource_name }}{% endblock title %}
+
+{% block content %}
+<!-- Toast Notification -->
+{% if toast_message %}
+<div id="toast" class="fixed top-4 right-4 z-50 flex items-center w-full max-w-xs p-4 mb-4 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800" role="alert">
+  <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg {% if toast_type == 'success' %}text-green-500 bg-green-100 dark:bg-green-800 dark:text-green-200{% else %}text-red-500 bg-red-100 dark:bg-red-800 dark:text-red-200{% endif %}">
+    {% if toast_type == "success" %}
+      <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+      </svg>
+    {% else %}
+      <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 11.793a1 1 0 1 1-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 0 1-1.414-1.414L8.586 10 6.293 7.707a1 1 0 0 1 1.414-1.414L10 8.586l2.293-2.293a1 1 0 0 1 1.414 1.414L11.414 10l2.293 2.293Z"/>
+      </svg>
+    {% endif %}
+  </div>
+  <div class="ml-3 text-sm font-normal">{{ toast_message }}</div>
+  <button type="button" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" onclick="document.getElementById('toast').remove()">
+    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+    </svg>
+  </button>
+</div>
+<script>
+  setTimeout(function() {
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.style.transition = 'opacity 0.3s ease-out';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 5000);
+</script>
+{% endif %}
+
+<!-- Main Container with Flex Layout -->
+<div class="flex gap-6">
+  <!-- Main Content Area -->
+  <div class="{% if filters %}flex-1{% else %}w-full{% endif %} bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ resource_name | capitalize }} List</h2>
+      <div class="flex gap-2">
+        <!-- Filter Toggle Button - Only show if filters are configured -->
+        {% if filters and filters.filters %}
+        <button id="filter-toggle" onclick="toggleFilters()" 
+                class="{% if has_active_filters %}bg-orange-600 hover:bg-orange-700{% else %}bg-gray-600 hover:bg-gray-700{% endif %} text-white px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1"
+                title="Toggle Filters">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z"></path>
+          </svg>
+          {% if has_active_filters %}
+            <span class="bg-white text-orange-600 text-xs px-2 py-1 rounded-full">Active</span>
+          {% endif %}
+        </button>
+        {% endif %}
+        
+        <a href="{{ base_path }}/new" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1" title="Create New">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+        </a>
+        
+        <a href="{{ base_path }}/list?download=json&complete=false&page={{ pagination.next | default(value=1)}}" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1" title="Download JSON">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </a>
+        
+        <a href="{{ base_path }}/list?download=csv&complete=false&page={{ pagination.next | default(value=1)}}" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1" title="Download CSV">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </a>
+
+        <a href="{{ base_path }}/list?download=csv&complete=true" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1" title="Download CSV (All Records)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Active Filters Display -->
+    {% if has_active_filters %}
+    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-blue-800 dark:text-blue-200">Active Filters:</span>
+          <div class="flex gap-2 flex-wrap">
+            {% for key, value in current_filters %}
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
+              {{ key | replace(from="_", to=" ") | title }}: {{ value }}
+              <button onclick="removeFilter('{{ key }}')" class="text-blue-600 hover:text-blue-800 dark:text-blue-300">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <button onclick="clearAllFilters()" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400">
+          Clear All
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            {% if list_structure and list_structure.columns %}
+              {% for col in list_structure.columns %}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {{ col.label | default(value=col.field | replace(from="_", to=" ") | title) }}
+                </th>
+              {% endfor %}
+            {% else %}
+              {% for header in headers %}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {{ header | replace(from="_", to=" ") | title }}
+                </th>
+              {% endfor %}
+            {% endif %}
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          {% for row in rows %}
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+            {% if list_structure and list_structure.columns %}
+              {% for col in list_structure.columns %}
+                {% set field = col.field %}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  {{ row[field] | default(value="") }}
+                </td>
+              {% endfor %}
+            {% else %}
+              {% for field in headers %}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  {{ row[field] | default(value="") }}
+                </td>
+              {% endfor %}
+            {% endif %}
+
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <div class="flex items-center space-x-2">
+                <a href="{{ base_path }}/view/{{ row['id'] | default(value=row['_id']) }}" 
+                   class="text-blue-600 hover:text-blue-900 dark:text-blue-400 p-1 rounded hover:bg-blue-50" 
+                   title="View">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </a>
+                
+                <a href="{{ base_path }}/edit/{{ row['id'] | default(value=row['_id']) }}" 
+                   class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 p-1 rounded hover:bg-indigo-50" 
+                   title="Edit">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </a>
+                
+                <form method="post" action="{{ base_path }}/{{ row['id'] | default(value=row['_id']) }}/delete" 
+                      style="display:inline;" 
+                      onsubmit="return confirm('Are you sure you want to delete this item?')">
+                  <button type="submit" 
+                          class="text-red-600 hover:text-red-900 dark:text-red-400 p-1 rounded hover:bg-red-50" 
+                          title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+              {% if has_active_filters %}
+                No {{ resource_name | lower }} found matching your filters.
+                <button onclick="clearAllFilters()" class="text-blue-600 hover:text-blue-800">Clear filters</button>
+                or <a href="{{ base_path }}/new" class="text-blue-600 hover:text-blue-800">create a new one!</a>
+              {% else %}
+                No {{ resource_name | lower }} found.
+                <a href="{{ base_path }}/new" class="text-blue-600 hover:text-blue-800">Create the first one!</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination and pagination.total > 1 %}
+    <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 mt-6">
+      <div class="flex flex-1 justify-between sm:hidden">
+        {% if pagination.prev %}
+          <a href="{{ base_path }}/list?page={{ pagination.prev }}{% if pagination.filter_params %}{{ pagination.filter_params }}{% endif %}" 
+             class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Previous
+          </a>
+        {% endif %}
+        {% if pagination.next %}
+          <a href="{{ base_path }}/list?page={{ pagination.next }}{% if pagination.filter_params %}{{ pagination.filter_params }}{% endif %}" 
+             class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            Next
+          </a>
+        {% endif %}
+      </div>
+      <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            Page <span class="font-medium">{{ pagination.current }}</span> of 
+            <span class="font-medium">{{ pagination.total }}</span>
+          </p>
+        </div>
+        <div>
+          <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            {% if pagination.prev %}
+              <a href="{{ base_path }}/list?page={{ pagination.prev }}{% if pagination.filter_params %}{{ pagination.filter_params }}{% endif %}" 
+                 class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                Previous
+              </a>
+            {% endif %}
+            {% if pagination.next %}
+              <a href="{{ base_path }}/list?page={{ pagination.next }}{% if pagination.filter_params %}{{ pagination.filter_params }}{% endif %}" 
+                 class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                Next
+              </a>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Dynamic Filter Sidebar - Built from filters configuration -->
+  {% if filters and filters.filters %}
+  <div id="filter-sidebar" class="hidden w-1/3 bg-white dark:bg-gray-800 shadow rounded-lg p-6 h-fit">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        {% if filters.title %}{{ filters.title }}{% else %}Filters{% endif %}
+      </h3>
+      <button onclick="toggleFilters()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <form id="filter-form" method="get" action="{{ base_path }}/list" class="space-y-4">
+      <!-- Dynamic Filters from Resource Configuration -->
+      {% for filter in filters.filters %}
+        <div class="space-y-2">
+          <label for="{{ filter.field }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {{ filter.label }}
+          </label>
+          
+          {% if filter.type == "text" %}
+            <input type="text" 
+                   id="{{ filter.field }}" 
+                   name="{{ filter.field }}" 
+                   value="{% if current_filters and current_filters[filter.field] %}{{ current_filters[filter.field] }}{% endif %}"
+                   placeholder="{% if filter.placeholder %}{{ filter.placeholder }}{% endif %}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          
+          {% elif filter.type == "select" %}
+            <select id="{{ filter.field }}" 
+                    name="{{ filter.field }}" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <option value="">All</option>
+              {% if filter.options %}
+                {% for option in filter.options %}
+                  <option value="{{ option.value }}" 
+                          {% if current_filters and current_filters[filter.field] and current_filters[filter.field] == option.value %}selected{% endif %}>
+                    {{ option.label }}
+                  </option>
+                {% endfor %}
+              {% endif %}
+            </select>
+
+          {% elif filter.type == "boolean" %}
+            <select id="{{ filter.field }}" 
+                    name="{{ filter.field }}" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <option value="">All</option>
+              {% if filter.options %}
+                {% for option in filter.options %}
+                  <option value="{{ option.value }}" 
+                          {% if current_filters and current_filters[filter.field] and current_filters[filter.field] == option.value %}selected{% endif %}>
+                    {{ option.label }}
+                  </option>
+                {% endfor %}
+              {% endif %}
+            </select>
+
+          {% elif filter.type == "multi_select" %}
+            <select id="{{ filter.field }}" 
+                    name="{{ filter.field }}" 
+                    multiple
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              {% if filter.options %}
+                {% for option in filter.options %}
+                  <option value="{{ option.value }}" 
+                          {% if current_filters and current_filters[filter.field] and current_filters[filter.field] == option.value %}selected{% endif %}>
+                    {{ option.label }}
+                  </option>
+                {% endfor %}
+              {% endif %}
+            </select>
+
+          {% elif filter.type == "date_range" %}
+            <div class="grid grid-cols-2 gap-2">
+              <input type="date" 
+                     id="{{ filter.field }}_from" 
+                     name="{{ filter.field }}_from" 
+                     value="{% if current_filters %}{%- set field_key = filter.field ~ "_from" -%}{{ current_filters[field_key] | default(value="") }}{% endif %}"
+                     class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <input type="date" 
+                     id="{{ filter.field }}_to" 
+                     name="{{ filter.field }}_to" 
+                     value="{% if current_filters %}{%- set field_key = filter.field ~ "_to" -%}{{ current_filters[field_key] | default(value="") }}{% endif %}"
+                     class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+
+          {% elif filter.type == "number_range" %}
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" 
+                     id="{{ filter.field }}_min" 
+                     name="{{ filter.field }}_min" 
+                     value="{% if current_filters %}{%- set field_key = filter.field ~ "_min" -%}{{ current_filters[field_key] | default(value="") }}{% endif %}"
+                     placeholder="{% if filter.min_placeholder %}{{ filter.min_placeholder }}{% else %}Min{% endif %}"
+                     class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <input type="number" 
+                     id="{{ filter.field }}_max" 
+                     name="{{ filter.field }}_max" 
+                     value="{% if current_filters %}{%- set field_key = filter.field ~ "_max" -%}{{ current_filters[field_key] | default(value="") }}{% endif %}"
+                     placeholder="{% if filter.max_placeholder %}{{ filter.max_placeholder }}{% else %}Max{% endif %}"
+                     class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+          {% endif %}
+
+          {% if filter.description %}
+            <p class="text-xs text-gray-500 dark:text-gray-400">{{ filter.description }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <!-- Action Buttons -->
+      <div class="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button type="submit" 
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+          Apply Filters
+        </button>
+        <button type="button" 
+                onclick="clearAllFilters()" 
+                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+          Clear
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleFilters() {
+  const sidebar = document.getElementById('filter-sidebar');
+  if (sidebar && sidebar.classList.contains('hidden')) {
+    sidebar.classList.remove('hidden');
+  } else if (sidebar) {
+    sidebar.classList.add('hidden');
+  }
+}
+
+function removeFilter(filterKey) {
+  const form = document.getElementById('filter-form');
+  const input = form.querySelector('[name="' + filterKey + '"]');
+  if (input) {
+    input.value = '';
+    form.submit();
+  }
+}
+
+function clearAllFilters() {
+  window.location.href = '{{ base_path }}/list';
+}
+
+// Auto-submit functionality for dynamic filters
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('filter-form');
+  if (!form) return;
+
+  // Auto-submit for text inputs (debounced)
+  const textInputs = form.querySelectorAll('input[type="text"]');
+  textInputs.forEach(input => {
+    let timeout;
+    input.addEventListener('input', function() {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        form.submit();
+      }, 800);
+    });
+  });
+
+  // Auto-submit for select dropdowns
+  const selects = form.querySelectorAll('select:not([multiple])');
+  selects.forEach(select => {
+    select.addEventListener('change', function() {
+      form.submit();
+    });
+  });
+
+  // Auto-submit for date inputs
+  const dateInputs = form.querySelectorAll('input[type="date"]');
+  dateInputs.forEach(input => {
+    input.addEventListener('change', function() {
+      form.submit();
+    });
+  });
+
+  // Auto-submit for number inputs (debounced)
+  const numberInputs = form.querySelectorAll('input[type="number"]');
+  numberInputs.forEach(input => {
+    let timeout;
+    input.addEventListener('input', function() {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        form.submit();
+      }, 1000);
+    });
+  });
+});
+</script>
+{% endblock content %}

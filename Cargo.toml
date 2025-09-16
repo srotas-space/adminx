@@ -1,0 +1,139 @@
+[package]
+name = "adminx"
+version = "0.2.1"
+edition = "2021"
+rust-version = "1.89.0"
+authors = ["Snm Maurya <sxmmaurya@gmail.com>", "Deepak Maurya <deepxmaurya@gmail.com>"]
+description = "A powerful, modern admin panel framework for Rust built on Actix Web and MongoDB with automatic CRUD, role-based access control, and a beautiful responsive UI"
+documentation = "https://docs.rs/adminx"
+homepage = "https://github.com/snmmaurya/adminx"
+repository = "https://github.com/snmmaurya/adminx"
+readme = "README.md"
+license = "MIT"
+keywords = ["admin", "panel", "crud", "web", "mongodb"]
+categories = ["web-programming", "web-programming::http-server", "authentication"]
+exclude = [
+    "examples/",
+    "tests/",
+    ".github/",
+    "docs/",
+    "screenshots/",
+    "*.md",
+    "!README.md"
+]
+
+[package.metadata]
+msrv = "1.70.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+name = "adminx"
+path = "src/lib.rs"
+
+[[bin]]
+name = "adminx"
+path = "src/bin/adminx.rs"
+
+[dependencies]
+# Web Framework
+actix-web = "4"
+actix-service = "2.0"
+actix-session = { version = "0.10", features = ["cookie-session"] }
+actix-files = "0.6.6"
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+futures-util = "0.3"
+async-trait = "0.1"
+
+# Database
+mongodb = { version = "2.4", features = ["tokio-runtime", "bson-chrono-0_4"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_urlencoded = "0.7"
+
+# Schema & Validation
+schemars = { version = "0.8", features = ["derive"] }
+
+# Authentication & Security
+jsonwebtoken = "9.3"
+bcrypt = "0.17"
+
+# Templating
+tera = "1.19"
+
+# CLI Dependencies
+clap = { version = "4.0", features = ["derive", "env"] }
+
+rpassword = "7.0"
+
+# Utilities
+once_cell = "1"
+lazy_static = "1.4"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+convert_case = "0.4"
+querystring = "1.1"
+base64 = "0.22"
+hex = "0.4"
+urlencoding = "2.1.3"
+
+# Error Handling
+thiserror = "1"
+anyhow = "1.0"
+derive_more = "0.99"
+
+# Logging
+log = "0.4"
+tracing = "0.1"
+env_logger = "0.11"
+
+# Static Files & Assets
+rust-embed = "8.7.2"
+mime_guess = "2.0.5"
+regex = "1.11.2"
+actix-multipart = "0.7.2"
+
+[dev-dependencies]
+actix-rt = "2"
+tempfile = "3"
+serde_test = "1"
+
+[features]
+default = ["templates", "auth", "rbac"]
+# Core Features
+templates = []
+auth = []
+rbac = []
+# Future Database Support
+postgres = []
+sqlite = []
+# Additional Features
+redis = []
+file-upload = []
+full = ["templates", "auth", "rbac", "file-upload"]
+
+[profile.dev]
+opt-level = 0
+debug = true
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+debug = false
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[badges]
+maintenance = { status = "actively-developed" }

@@ -1,0 +1,1 @@
+pub mod adminx_model;

@@ -1,0 +1,158 @@
+{% set base = "/adminx" %}
+{% set list = "/list" %}
+<header class="sticky top-0 z-50 w-full">
+  <!-- Gradient underlay for extra pop -->
+  <div class="absolute inset-0 h-16 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-indigo-700 dark:via-violet-700 dark:to-fuchsia-700"></div>
+
+  <!-- Glass bar -->
+  <div class="relative">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="h-16 flex items-center rounded-b-2xl border border-white/10 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-lg">
+        <!-- Left: brand + desktop nav -->
+        <div class="flex items-center gap-6 w-full">
+          <!-- Brand -->
+          <div class="flex items-center gap-2 pl-3">
+            {% if is_authenticated %}
+            <button class="md:hidden inline-flex items-center justify-center rounded-lg p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200" 
+                    aria-label="Menu" 
+                    data-mobile-toggle>
+              <!-- menu icon -->
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+              </svg>
+            </button>
+            {% endif %}
+            <a href="{{ base }}" class="flex items-center gap-2 font-semibold tracking-tight text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
+              <!-- Logo image -->
+              <img src="https://snmmaurya.s3.ap-south-1.amazonaws.com/AX.png" alt="AdminX Logo" class="h-8 w-8 rounded-full shadow ring-2 ring-indigo-500/70">
+            </a>
+          </div>
+
+          <!-- Desktop nav - Only show if authenticated -->
+          {% if is_authenticated %}
+          <nav id="desktop-nav" class="hidden md:flex items-center gap-1">
+            {% for menu in menus %}
+              {% set id = loop.index0 %}
+              {% if menu.children and menu.children | length > 0 %}
+                <div class="relative">
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    data-menu-trigger
+                    data-id="{{ id }}"
+                  >
+                    <span>{{ menu.title }}</span>
+                    <svg class="h-4 w-4 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+
+                  <!-- Dropdown panel -->
+                  <div
+                    class="pointer-events-none absolute left-0 mt-2 w-64 origin-top-left rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-xl opacity-0 translate-y-1 scale-95 transition-all duration-200"
+                    role="menu"
+                    aria-label="{{ menu.title }}"
+                    data-menu-panel
+                    data-id="{{ id }}"
+                  >
+                    <ul class="py-2">
+                      {% for child in menu.children %}
+                        <li>
+                          <a
+                            href="{{ base }}{% if not child.path is starting_with('/') %}/{% endif %}{{ child.path }}{{ list }}"
+                            class="flex items-center justify-between px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-lg mx-2 transition-all duration-200"
+                            data-menu-item
+                          >
+                            <span>{{ child.title }}</span>
+                            <!-- arrow -->
+                            <svg class="h-3.5 w-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                          </a>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </div>
+              {% else %}
+                <a href="{{ base }}{% if not menu.path is starting_with('/') %}/{% endif %}{{ menu.path }}{{ list }}"
+                   class="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-800 dark:text-slate-100 hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200">
+                  {{ menu.title }}
+                </a>
+              {% endif %}
+            {% endfor %}
+          </nav>
+          {% endif %}
+
+          <!-- Right: actions -->
+          <div class="ml-auto flex items-center gap-2 pr-3">
+            <!-- Theme toggle -->
+            <button type="button" aria-label="Toggle theme"
+                    class="inline-flex items-center gap-2 rounded-lg border border-slate-200/60 dark:border-slate-700/60 px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200"
+                    data-theme-toggle>
+              <svg data-icon-sun class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="4" stroke-width="2"></circle>
+                <path stroke-linecap="round" stroke-width="2"
+                      d="M12 2v2m0 16v2M20 12h2M2 12H4M17.657 6.343l1.414 1.414M4.929 19.071l1.414-1.414M6.343 6.343 4.93 7.757m14.142 10.607-1.414-1.414"/>
+              </svg>
+              <svg data-icon-moon class="hidden h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+              </svg>
+            </button>
+
+            <!-- Authentication actions -->
+            {% if is_authenticated %}
+              <a href="{{ base }}/logout"
+                 class="inline-flex items-center rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-3 py-2 text-sm font-semibold text-white shadow hover:opacity-95 active:opacity-90 transition-all duration-200">
+                Logout
+              </a>
+            {% else %}
+              <a href="{{ base }}/login"
+                 class="inline-flex items-center rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-3 py-2 text-sm font-semibold text-white shadow hover:opacity-95 active:opacity-90 transition-all duration-200">
+                Login
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Sheet - Only show if authenticated -->
+  {% if is_authenticated %}
+  <div id="mobile-menu"
+       class="fixed inset-x-0 top-16 mx-2 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl opacity-0 pointer-events-none transition-all duration-300">
+    <nav class="p-4 text-slate-900 dark:text-slate-100">
+      {% for menu in menus %}
+        {% if menu.children and menu.children | length > 0 %}
+          <button class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200"
+                  data-mobile-accordion>
+            {{ menu.title }}
+            <svg class="h-4 w-4 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="max-h-0 overflow-hidden opacity-0 transition-all duration-300">
+            {% for child in menu.children %}
+              <a href="{{ base }}{% if not child.path is starting_with('/') %}/{% endif %}{{ child.path }}{{ list }}"
+                 class="block rounded-lg px-6 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200"
+                 data-mobile-link>
+                {{ child.title }}
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <a href="{{ base }}{% if not menu.path is starting_with('/') %}/{% endif %}{{ menu.path }}{{ list }}"
+             class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200"
+             data-mobile-link>
+            {{ menu.title }}
+          </a>
+        {% endif %}
+      {% endfor %}
+    </nav>
+  </div>
+  {% endif %}
+</header>

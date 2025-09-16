@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Admin Panel{% endblock title %}</title>
+
+  <!-- Tailwind: dark mode via class -->
+  <script>
+    window.tailwind = { config: { darkMode: 'class' } };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Prevent theme flash -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('adminx-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = stored || (prefersDark ? 'dark' : 'light');
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+      } catch (_) {}
+    })();
+  </script>
+
+  <style>
+  :root {
+    --bg: #f1f5f9;   /* slate-100 */
+    --fg: #0f172a;   /* slate-900 */
+    --header: #101332;
+    --footer: #101332;
+  }
+  html.dark {
+    --bg: #0b1220;   /* near-slate-950 */
+    --fg: #e5e7eb;   /* slate-200 */
+    --header: #0b0e26;
+    --footer: #0b0e26;
+  }
+  body { background: var(--bg) !important; color: var(--fg) !important; }
+  header { background: var(--header) !important; color: var(--fg) !important; }
+  footer { background: var(--footer) !important; color: var(--fg) !important; }
+
+  .editor-container {
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  .dark .editor-container {
+      border-color: #4b5563;
+  }
+  .mode-button {
+      transition: all 0.2s ease;
+  }
+  .mode-button.active {
+      background-color: #3b82f6;
+      color: white;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  .editor-textarea {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace !important;
+    line-height: 1.5;
+  }
+  .status-indicator {
+      transition: all 0.3s ease;
+  }
+  .fade-in {
+      opacity: 0;
+      animation: fadeIn 0.3s ease forwards;
+  }
+  @keyframes fadeIn {
+      to { opacity: 1; }
+  }
+</style>
+
+</head>
+
+<body class="h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-indigo-200/50 dark:selection:bg-indigo-400/30">
+
+  {% include "header.html.tera" %}
+
+  <main class="flex-1">
+    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      {% block content %}{% endblock content %}
+    </div>
+  </main>
+
+  {% include "footer.html.tera" %}
+
+  <!-- Behavior: theme toggle + menus -->
+  <script>
+    (function () {
+      // ===== THEME =====
+      var root = document.documentElement;
+      function applyTheme(theme) {
+        if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
+        try { localStorage.setItem('adminx-theme', theme); } catch(_) {}
+        document.querySelectorAll('[data-icon-sun]').forEach(el => el.classList.toggle('hidden', theme !== 'dark'));
+        document.querySelectorAll('[data-icon-moon]').forEach(el => el.classList.toggle('hidden', theme === 'dark'));
+      }
+      function toggleTheme() {
+        applyTheme(root.classList.contains('dark') ? 'light' : 'dark');
+      }
+      // init icons
+      applyTheme(root.classList.contains('dark') ? 'dark' : 'light');
+      document.querySelectorAll('[data-theme-toggle]').forEach(btn => btn.addEventListener('click', toggleTheme));
+
+      // ===== DESKTOP MENUS (click to open, close on outside/Esc/item) =====
+      var openId = null;
+      function closeMenus() {
+        document.querySelectorAll('[data-menu-panel]').forEach(p => {
+          p.classList.add('pointer-events-none', 'opacity-0', 'translate-y-1', 'scale-95');
+          p.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+        });
+        document.querySelectorAll('[data-menu-trigger]').forEach(t => t.setAttribute('aria-expanded', 'false'));
+        openId = null;
+      }
+      function openMenu(id) {
+        closeMenus();
+        var panel = document.querySelector('[data-menu-panel][data-id="'+id+'"]');
+        var trigger = document.querySelector('[data-menu-trigger][data-id="'+id+'"]');
+        if (!panel || !trigger) return;
+        panel.classList.remove('pointer-events-none', 'opacity-0', 'translate-y-1', 'scale-95');
+        panel.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+        trigger.setAttribute('aria-expanded', 'true');
+        openId = id;
+      }
+      document.querySelectorAll('[data-menu-trigger]').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var id = btn.getAttribute('data-id');
+          if (openId === id) { closeMenus(); } else { openMenu(id); }
+        });
+      });
+      document.addEventListener('mousedown', function (e) {
+        var nav = document.getElementById('desktop-nav');
+        if (!nav || openId === null) return;
+        if (!nav.contains(e.target)) closeMenus();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
+      document.querySelectorAll('[data-menu-item]').forEach(a => a.addEventListener('click', closeMenus));
+
+      // ===== MOBILE DRAWER =====
+      var drawer = document.getElementById('mobile-menu');
+      var burger = document.querySelector('[data-mobile-toggle]');
+      function setDrawer(open) {
+        if (!drawer) return;
+        drawer.classList.toggle('opacity-100', open);
+        drawer.classList.toggle('opacity-0', !open);
+        drawer.classList.toggle('pointer-events-auto', open);
+        drawer.classList.toggle('pointer-events-none', !open);
+      }
+      if (burger) burger.addEventListener('click', function () {
+        var open = drawer.classList.contains('opacity-0');
+        setDrawer(open);
+      });
+      document.querySelectorAll('[data-mobile-link]').forEach(a => a.addEventListener('click', function(){ setDrawer(false); }));
+      document.addEventListener('mousedown', function (e) {
+        if (!drawer || drawer.classList.contains('opacity-0')) return;
+        var header = document.querySelector('header');
+        if (header && !header.contains(e.target)) setDrawer(false);
+      });
+
+      // Mobile submenu
+      document.querySelectorAll('[data-mobile-accordion]').forEach(btn => {
+        btn.addEventListener('click', function(){
+          var panel = btn.nextElementSibling;
+          if (!panel) return;
+          panel.classList.toggle('max-h-0');
+          panel.classList.toggle('max-h-96');
+          panel.classList.toggle('opacity-0');
+          panel.classList.toggle('opacity-100');
+          var icon = btn.querySelector('svg'); if (icon) icon.classList.toggle('rotate-180');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
