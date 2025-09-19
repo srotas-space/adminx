@@ -51,126 +51,509 @@ serde = { version = "1.0", features = ["derive"] }
 schemars = { version = "0.8", features = ["derive"] }
 ```
 
-### 1. Define Your Resource
-
+### 1. Define Collections
 ```rust
-use adminx::prelude::*;
+// src/models/image_model.rs
+use actix_web::web;
+use mongodb::{
+    bson::{doc, oid::ObjectId, to_bson, DateTime as BsonDateTime},
+    Collection, Database,
+};
+use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
-use schemars::JsonSchema;
-use mongodb::{Collection, bson::Document};
+use serde_json::{self, Value};
+use crate::services::redis_service::get_redis_connection;
+use strum_macros::EnumIter; 
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
-pub struct User {
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<mongodb::bson::oid::ObjectId>,
-    
-    #[schemars(regex = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")]
-    pub email: String,
-    
-    pub name: String,
-    
-    #[schemars(range(min = 18, max = 120))]
-    pub age: Option<u32>,
-    
-    pub created_at: Option<mongodb::bson::DateTime>,
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, EnumIter)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageStatus {
+    Active,
+    Inactive,
 }
 
-pub struct UserResource;
+impl ToString for ImageStatus {
+    fn to_string(&self) -> String {
+        match self {
+            ImageStatus::Active => "active".to_string(),
+            ImageStatus::Inactive => "inactive".to_string(),
+        }
+    }
+}
 
-impl AdmixResource for UserResource {
-    fn new() -> Self { Self }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Image {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+
+    pub title: String,
+    pub image_url: String,
+    pub status: ImageStatus,
+    pub deleted: bool,
+    pub created_at: BsonDateTime,
+    pub updated_at: BsonDateTime,
+}
+
+
+impl Default for Image {
+    fn default() -> Self {
+        Self {
+            id: None,
+            title: String::from(""),
+            image_url: String::from(""),
+            status: ImageStatus::Active,
+            deleted: false,
+            created_at: BsonDateTime::now(),
+            updated_at: BsonDateTime::now(),
+        }
+    }
+}
+```
+
+
+### 2. Define adminx initializer
+```rust
+// src/admin/initializer.rs
+use mongodb::Database;
+use adminx::{
+    adminx_initialize, 
+    get_adminx_config, 
+    setup_adminx_logging, 
+    get_adminx_session_middleware,
+    register_all_admix_routes,
+    registry::register_resource,
+    AdmixResource,
+    AdminxConfig,
+};
+use actix_session::SessionMiddleware;
+
+// Import your resources
+// use crate::admin::resources::config_resource::ConfigResource;
+use crate::admin::resources::image_resource::ImageResource;
+
+pub struct AdminxInitializer;
+
+impl AdminxInitializer {
+    /// Initialize all AdminX components and return the configuration
+    pub async fn initialize(db: Database) -> AdminxConfig {
+        println!("Initializing AdminX components...");
+        
+        // Get AdminX configuration
+        let adminx_config = get_adminx_config();
+        
+        // Setup logging
+        setup_adminx_logging(&adminx_config);
+        
+        // Initialize AdminX with database
+        let _adminx_instance = adminx_initialize(db.clone()).await;
+        
+        // Register resources
+        Self::register_resources();
+        
+        // Print debug information
+        Self::print_debug_info();
+        
+        adminx_config
+    }
     
-    fn resource_name(&self) -> &'static str { "User" }
-    fn base_path(&self) -> &'static str { "users" }
-    fn collection_name(&self) -> &'static str { "users" }
+    /// Register all AdminX resources
+    fn register_resources() {
+        println!("📝 Registering AdminX resources...");
+        // Register your resources with AdminX
+        // register_resource(Box::new(ConfigResource::new()));
+        register_resource(Box::new(ImageResource::new()));
+        println!("All resources registered successfully!");
+    }
     
+    /// Print debug information about registered resources
+    fn print_debug_info() {
+        // Debug: Check if resources were registered
+        let resources = adminx::registry::all_resources();
+        println!("📋 Total resources registered: {}", resources.len());
+        
+        for resource in &resources {
+            println!("   - Resource: '{}' at path: '{}'", 
+                     resource.resource_name(), 
+                     resource.base_path());
+        }
+    }
+    
+    /// Get the AdminX session middleware
+    pub fn get_session_middleware(config: &AdminxConfig) -> SessionMiddleware<impl actix_session::storage::SessionStore> {
+        get_adminx_session_middleware(config)
+    }
+    
+    /// Get the AdminX routes service
+    pub fn get_routes_service() -> actix_web::Scope {
+        register_all_admix_routes()
+    }
+}
+```
+
+
+### 3. Define Resources
+```rust
+// src/admin/resources/image_resource.rs
+use crate::dbs::mongo::get_collection;
+use adminx::{AdmixResource, error::AdminxError};
+use async_trait::async_trait;
+use mongodb::{Collection, bson::Document};
+use serde_json::{json, Value};
+use crate::models::image_model::ImageStatus;
+use futures::future::BoxFuture;
+use std::collections::HashMap;
+use convert_case::{Case, Casing};
+use strum::IntoEnumIterator;
+
+pub struct ImageOptions;
+
+impl ImageOptions {
+    pub fn statuses_options() -> Vec<Value> {
+        let mut options = vec![];
+        for variant in ImageStatus::iter() {
+            let value = serde_json::to_string(&variant).unwrap().replace('"', "");
+            let label = value.to_case(Case::Title);
+            options.push(json!({ "value": value, "label": label }));
+        }
+        options
+    }
+
+    pub fn boolean_options() -> Vec<Value> {
+        vec![
+            json!({ "value": "true",  "label": "True"  }),
+            json!({ "value": "false", "label": "False" }),
+        ]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ImageResource;
+
+#[async_trait]
+impl AdmixResource for ImageResource {
+    fn new() -> Self {
+        ImageResource
+    }
+
+    fn resource_name(&self) -> &'static str {
+        "Images"
+    }
+
+    fn base_path(&self) -> &'static str {
+        "images"
+    }
+
+    fn collection_name(&self) -> &'static str {
+        "images"
+    }
+
     fn get_collection(&self) -> Collection<Document> {
-        use adminx::utils::database::get_adminx_database;
-        get_adminx_database().collection(self.collection_name())
+        get_collection::<Document>("images")
     }
-    
+
     fn clone_box(&self) -> Box<dyn AdmixResource> {
-        Box::new(self.clone())
+        Box::new(Self::new())
     }
-    
-    // Specify which fields can be created/updated
-    fn permit_keys(&self) -> Vec<&'static str> {
-        vec!["email", "name", "age"]
+
+    fn menu_group(&self) -> Option<&'static str> {
+        Some("Management")
     }
-    
-    // Define allowed roles
+
+    fn menu(&self) -> &'static str {
+        "Images"
+    }
+
     fn allowed_roles(&self) -> Vec<String> {
-        vec!["admin".to_string(), "moderator".to_string()]
+        vec!["admin".to_string(), "superadmin".to_string()]
+    }
+
+    fn supports_file_upload(&self) -> bool {
+        true
     }
     
-    // Optional: Custom form structure
-    fn form_structure(&self) -> Option<serde_json::Value> {
-        Some(serde_json::json!({
+    fn max_file_size(&self) -> usize {
+        5 * 1024 * 1024 // 5MB for images
+    }
+    
+    fn allowed_file_extensions(&self) -> Vec<&'static str> {
+        vec!["jpg", "jpeg", "png", "gif", "webp", "bmp", "pdf"]
+    }
+    
+    fn permit_keys(&self) -> Vec<&'static str> {
+        vec!["title", "image_url", "status", "deleted"]
+    }
+    
+    // FIXED: Remove 'async' keyword and correct method signature
+    fn process_file_upload(&self, field_name: &str, file_data: &[u8], filename: &str) -> BoxFuture<'static, Result<HashMap<String, String>, AdminxError>> {
+        let filename = filename.to_string();
+        let field_name = field_name.to_string();
+        let file_data = file_data.to_vec();
+        let data_size = file_data.len();
+        
+        Box::pin(async move {
+            tracing::info!("Processing file upload for field: {}, filename: {}, size: {} bytes", 
+                          field_name, filename, data_size);
+            
+            // Generate unique filename to avoid conflicts
+            let timestamp = chrono::Utc::now().timestamp();
+            let file_extension = filename.split('.').last().unwrap_or("jpg");
+            let unique_filename = format!("images/{}_{}.{}", timestamp, field_name, file_extension);
+            
+            // Use your actual S3 upload utility
+            match crate::utils::s3_util::upload_image_to_s3(unique_filename.clone(), file_data).await {
+                Ok(public_url) => {
+                    let mut urls = HashMap::new();
+                    urls.insert("image_url".to_string(), public_url);
+                    
+                    tracing::info!("File uploaded successfully to S3: {}", unique_filename);
+                    Ok(urls)
+                }
+                Err(e) => {
+                    tracing::error!("S3 upload failed for {}: {}", unique_filename, e);
+                    Err(AdminxError::InternalError)
+                }
+            }
+        })
+    }
+
+    
+
+    // ===========================
+    // UI STRUCTURE OVERRIDES
+    // ===========================
+    fn form_structure(&self) -> Option<Value> {
+        Some(json!({
             "groups": [
                 {
-                    "title": "User Details",
+                    "title": "Image Details",
                     "fields": [
-                        {"name": "name", "label": "Full Name", "type": "text", "required": true},
-                        {"name": "email", "label": "Email Address", "type": "email", "required": true},
-                        {"name": "age", "label": "Age", "type": "number", "required": false}
+                        {
+                            "name": "title",
+                            "field_type": "text",
+                            "label": "Image Title",
+                            "value": "",
+                            "required": true,
+                            "help_text": "Enter a descriptive title for the image"
+                        },
+                        {
+                            "name": "image_file",
+                            "field_type": "file",
+                            "label": "Upload Image",
+                            "accept": "image/*",
+                            "required": true,
+                            "help_text": "Upload an image file (JPG, PNG, GIF, WebP). Maximum size: 5MB."
+                        },
+                        {
+                            "name": "status",
+                            "field_type": "select", 
+                            "label": "Status",
+                            "value": "active",
+                            "required": true,
+                            "options": ImageOptions::statuses_options(),
+                            "help_text": "Set the image status"
+                        },
+                        {
+                            "name": "deleted",
+                            "field_type": "boolean", 
+                            "label": "Mark as Deleted",
+                            "value": "false",
+                            "required": false,
+                            "options": ImageOptions::boolean_options(),
+                            "help_text": "Mark this image as deleted (soft delete)"
+                        }
                     ]
                 }
             ]
         }))
     }
+
+    fn list_structure(&self) -> Option<Value> {
+        Some(json!({
+            "columns": [
+                {
+                    "field": "title",
+                    "label": "Title",
+                    "sortable": true
+                },
+                {
+                    "field": "image_url", 
+                    "label": "Image URL",
+                    "sortable": false,
+                    "type": "url"
+                },
+                {
+                    "field": "status",
+                    "label": "Status",
+                    "sortable": true,
+                    "type": "badge"
+                },
+                {
+                    "field": "deleted",
+                    "label": "Deleted",
+                    "sortable": true,
+                    "type": "boolean"
+                },
+                {
+                    "field": "created_at",
+                    "label": "Created At",
+                    "type": "datetime",
+                    "sortable": true
+                }
+            ],
+            "actions": ["view", "edit", "delete"]
+        }))
+    }
+
+    fn view_structure(&self) -> Option<Value> {
+        Some(json!({
+            "sections": [
+                {
+                    "title": "Image Information",
+                    "fields": [
+                        {
+                            "field": "title",
+                            "label": "Title"
+                        },
+                        {
+                            "field": "image_url",
+                            "label": "Image URL",
+                            "type": "url"
+                        },
+                        {
+                            "field": "status",
+                            "label": "Status",
+                            "type": "badge"
+                        },
+                        {
+                            "field": "deleted",
+                            "label": "Deleted",
+                            "type": "boolean"
+                        }
+                    ]
+                },
+                {
+                    "title": "System Information",
+                    "fields": [
+                        {
+                            "field": "_id",
+                            "label": "Image ID"
+                        },
+                        {
+                            "field": "created_at",
+                            "label": "Created At",
+                            "type": "datetime"
+                        },
+                        {
+                            "field": "updated_at", 
+                            "label": "Updated At",
+                            "type": "datetime"
+                        }
+                    ]
+                }
+            ]
+        }))
+    }
+
+    fn filters(&self) -> Option<Value> {
+        Some(json!({
+            "title": "Image Filters",
+            "filters": [
+                {
+                    "field": "title",
+                    "type": "text",
+                    "label": "Title",
+                    "placeholder": "Search by title..."
+                },
+                {
+                    "field": "status",
+                    "type": "select",
+                    "label": "Status",
+                    "options": ImageOptions::statuses_options(),
+                },
+                {
+                    "field": "deleted",
+                    "type": "boolean",
+                    "label": "Show Deleted",
+                    "options": ImageOptions::boolean_options(),
+                },
+                {
+                    "field": "created_at",
+                    "type": "date_range",
+                    "label": "Created Date"
+                }
+            ]
+        }))
+    }
+
+    // ===========================
+    // CUSTOM ACTIONS (Optional)
+    // ===========================
+    fn custom_actions(&self) -> Vec<adminx::actions::CustomAction> {
+        vec![
+            adminx::actions::CustomAction {
+                name: "toggle_status",
+                method: "POST",
+                handler: |req, _path, _body| {
+                    let image_id = req.match_info().get("id").unwrap_or("unknown").to_string();
+
+                    Box::pin(async move {
+                        tracing::info!("Toggling status for image: {}", image_id);
+                        
+                        // TODO: Implement actual status toggle logic
+                        actix_web::HttpResponse::Ok().json(serde_json::json!({
+                            "success": true,
+                            "message": format!("Image {} status toggled", image_id)
+                        }))
+                    })
+                },
+            },
+        ]
+    }
 }
 ```
 
-### 2. Set up Your Application
+
+### 4. Set up Your Application
 
 ```rust
+// src/main.rs
 use actix_web::{web, App, HttpServer, middleware::Logger};
-use adminx::prelude::*;
+use dotenv::dotenv;
+use std::env;
+use crate::dbs::mongo::init_mongo_client;
+use crate::admin::initializer::AdminxInitializer;
+
+mod dbs;
+mod admin;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Load configuration
-    let config = get_adminx_config();
-    setup_adminx_logging(&config);
+    dotenv().ok();
     
-    // Connect to MongoDB
-    let client = mongodb::Client::with_uri_str("mongodb://localhost:27017").await.unwrap();
-    let database = client.database("adminx_demo");
+    println!("Initializing database connection...");
+    let db = init_mongo_client().await;
     
-    // Initialize AdminX
-    adminx_initialize(database.clone()).await.unwrap();
+    // Initialize AdminX components using the initializer
+    let adminx_config = AdminxInitializer::initialize(db.clone()).await;
     
-    // Register your resources
-    adminx::register_resource(Box::new(UserResource::new()));
-    
-    // Create admin user (optional)
-    use adminx::utils::auth::{initiate_auth, NewAdminxUser, AdminxStatus};
-    let admin_user = NewAdminxUser {
-        username: "admin".to_string(),
-        email: "admin@example.com".to_string(),
-        password: "secure_password".to_string(),
-        status: AdminxStatus::Active,
-        delete: false,
-    };
-    initiate_auth(admin_user).await.ok();
-    
-    println!("🚀 Starting AdminX server at http://localhost:8080");
-    println!("📱 Admin panel: http://localhost:8080/adminx");
-    
+    let server_address = env::var("SERVER_ADDRESS").unwrap_or_else(|_| "0.0.0.0:8080".to_string());
+        
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(config.clone()))
-            .wrap(get_adminx_session_middleware(&config))
+            .app_data(web::Data::new(adminx_config.clone()))
             .wrap(Logger::default())
-            .service(register_all_admix_routes())
+            .wrap(AdminxInitializer::get_session_middleware(&adminx_config))
+            .service(AdminxInitializer::get_routes_service())
     })
-    .bind("127.0.0.1:8080")?
+    .bind(server_address)?
     .run()
     .await
 }
 ```
 
-### 3. Environment Variables
+### 5. Environment Variables
 
 Create a `.env` file:
 
@@ -181,15 +564,28 @@ ENVIRONMENT=development
 RUST_LOG=debug
 ```
 
-### 4. Run Your Application
+
+### 5. Create admin username and password
+
+```bash
+cargo install adminx
+
+# Patch Environment Variables
+export MONGODB_URL="mongodb://localhost:27017"
+export ADMINX_DB_NAME="adminx"
+adminx create -u admin -e admin@example.com -y
+```
+
+
+### 6. Start your application
 
 ```bash
 cargo run
+
+Visit `http://localhost:8080/adminx` and log in with credentails created in step 5:
 ```
 
-Visit `http://localhost:8080/adminx` and log in with:
-- **Email**: `admin@example.com`
-- **Password**: `secure_password`
+
 
 ## 📖 Documentation
 
