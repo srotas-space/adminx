@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/adminx)](https://crates.io/crates/adminx)
 [![Documentation](https://docs.rs/adminx/badge.svg)](https://docs.rs/adminx)
 [![License](https://img.shields.io/crates/l/adminx)](LICENSE)
-[![Build Status](https://github.com/snmmaurya/adminx/workflows/CI/badge.svg)](https://github.com/snmmaurya/adminx/actions)
+[![Build Status](https://github.com/xsmmaurya/adminx/workflows/CI/badge.svg)](https://github.com/xsmmaurya/adminx/actions)
 
 **AdminX** is a powerful, modern admin panel framework for Rust built on top of Actix Web and MongoDB. It provides a complete solution for creating administrative interfaces with minimal boilerplate code, featuring automatic CRUD operations, role-based access control, and a beautiful responsive UI.
 
@@ -482,7 +482,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ### Development Setup
 
 ```bash
-git clone https://github.com/snmmaurya/adminx.git
+git clone https://github.com/xsmmaurya/adminx.git
 cd adminx
 cargo build
 cargo test
@@ -516,9 +516,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📖 [How it works](https://adminx.srotas.space/get-started)
 - 📖 [Support](https://adminx.srotas.space/support)
 - 📖 [Documentation](https://docs.rs/adminx)
-- 💬 [Discussions](https://github.com/snmmaurya/adminx/discussions)
-- 🐛 [Issues](https://github.com/snmmaurya/adminx/issues)
-- 📧 Email: sxmmaurya@gmail.com
+- 💬 [Discussions](https://github.com/srotas-space/adminx/discussions)
+- 🐛 [Issues](https://github.com/srotas-space/adminx/issues)
+- 📧 Email: xsmmaurya@gmail.com
 - 📧 Email: deepxmaurya@gmail.com
 
 ---
@@ -527,16 +527,16 @@ Made with ❤️ by the Rustacean360 Team
 
 ## 👥 Contributors
 
-- **[Snm Maurya](https://github.com/snmmaurya)** - Creator & Lead Developer  
-  <img src="https://snmmaurya.com/images/snmmaurya.jpg" alt="Snm Maurya" width="80" height="80" style="border-radius: 50%;">  
-  [LinkedIn](https://www.linkedin.com/in/snmmaurya/)
+- **[Snm Maurya](https://github.com/xsmmaurya)** - Creator & Lead Developer  
+  <img src="https://srotas-space.s3.ap-south-1.amazonaws.com/snm.jpg" alt="Snm Maurya" width="80" height="80" style="border-radius: 50%;">  
+  [LinkedIn](https://www.linkedin.com/in/xsmmaurya/)
 
 - **[Deepak Maurya](https://github.com/deepxmaurya)** - Core Developer & Contributor  
-  <img src="https://snmmaurya.com/images/deepxmaurya.jpg" alt="Deepak Maurya" width="80" height="80" style="border-radius: 50%;">  
+  <img src="https://srotas-space.s3.ap-south-1.amazonaws.com/srotas-icon-1024.png" alt="Deepak Maurya" width="80" height="80" style="border-radius: 50%;">  
   [LinkedIn](https://www.linkedin.com/in/deepxmaurya/)
 
 
-[![GitHub stars](https://img.shields.io/github/stars/snmmaurya/adminx?style=social)](https://github.com/snmmaurya/adminx)
+[![GitHub stars](https://img.shields.io/github/stars/srotas-space/adminx?style=social)](https://github.com/srotas-space/adminx)
 
 
 
@@ -547,6 +547,6 @@ The roadmap includes phases like core CRUD foundation, extended resource feature
 
 👉 See the full roadmap here: [ROADMAP.md](./ROADMAP.md)
 
-[![Project Status](https://img.shields.io/badge/status-actively--developed-brightgreen.svg)](https://github.com/snmmaurya/adminx)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)](https://github.com/snmmaurya/adminx/issues)
+[![Project Status](https://img.shields.io/badge/status-actively--developed-brightgreen.svg)](https://github.com/srotas-space/adminx)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)](https://github.com/srotas-space/adminx/issues)
 

@@ -49,7 +49,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
     let ui_resource_name = resource_arc.resource_name().to_string();
     let ui_base_path = resource_arc.base_path().to_string();
 
-    // GET /list - List view with download support
+    // GET /list - HTML List view with download support
     scope = scope.route("/list", web::get().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -177,7 +177,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // GET /new - New item form page
+    // GET /new - HTML New item form page
     scope = scope.route("/new", web::get().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -214,7 +214,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // GET /view/{id} - View single item page
+    // GET /view/{id} - HTML View single item page
     scope = scope.route("/view/{id}", web::get().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -264,7 +264,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // GET /edit/{id} - Edit item form page
+    // GET /edit/{id} - HTML Edit item form page
     scope = scope.route("/edit/{id}", web::get().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -319,7 +319,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // POST /create - Handle HTML form submission for new items
+    // POST /create
     scope = scope.route("/create", web::post().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -343,7 +343,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // POST /create-with-files - Handle multipart form submission for new items
+    // POST /create-with-files
     scope = scope.route("/create-with-files", web::post().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -381,7 +381,8 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                             }
                         }
                         
-                        resource.create_with_files(&req, form_data, files).await
+                        let create_response = resource.create_with_files(&req, form_data, files).await;
+                        handle_create_response(create_response, &resource.base_path(), &resource_name)
                     }
                     Err(response) => response
                 }
@@ -389,7 +390,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // POST /update/{id}/with-files - Handle multipart form submission for updates
+    // POST /update/{id}/with-files
     scope = scope.route("/update/{id}/with-files", web::post().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -433,7 +434,8 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                             }
                         }
                         
-                        resource.update_with_files(&req, item_id, form_data, files).await
+                        let update_response = resource.update_with_files(&req, item_id.clone(), form_data, files).await;
+                        handle_update_response(update_response, &resource.base_path(), &item_id, &resource_name)
                     }
                     Err(response) => response
                 }
@@ -441,7 +443,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // POST /update/{id} - Handle HTML form submission for updates
+    // POST /update/{id}
     scope = scope.route("/update/{id}", web::post().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();
@@ -466,7 +468,7 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
         }
     }));
 
-    // POST /{id}/delete - Handle HTML form submission for deletes
+    // POST /{id}/delete
     scope = scope.route("/{id}/delete", web::post().to({
         let resource = Arc::clone(&resource_arc);
         let resource_name = ui_resource_name.clone();

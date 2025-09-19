@@ -62,7 +62,7 @@
     <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
       {% for key, value in record %}
         {% if key != "id" %} <!-- Don't show the technical ID -->
-        <div class="sm:col-span-1">
+        <div class="media-field-{{ loop.index }}" data-key="{{ key }}" data-value="{{ value }}">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
             {{ key | replace(from="_", to=" ") | title }}
           </dt>
@@ -70,7 +70,101 @@
             {% if not value or value == "" %}
               <span class="text-gray-400 italic">Not provided</span>
             {% else %}
-              {{ value }}
+              <div class="media-content">
+                <span class="media-url-link">
+                  <a href="{{ value }}" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline break-all">
+                    {{ value }}
+                  </a>
+                </span>
+                
+                <!-- Image container -->
+                <div class="media-image-container hidden mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <img src="{{ value }}" 
+                       alt="Image preview" 
+                       class="w-full h-auto max-h-96 object-contain bg-gray-50 dark:bg-gray-700"
+                       loading="lazy"
+                       onerror="this.parentElement.querySelector('.image-error').classList.remove('hidden'); this.classList.add('hidden');">
+                  <div class="image-error hidden p-4 text-center text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600">
+                    <svg class="mx-auto w-12 h-12 mb-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    </svg>
+                    Unable to load image
+                  </div>
+                </div>
+
+                <!-- SVG iframe container -->
+                <div class="media-svg-container hidden mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <iframe src="{{ value }}" 
+                          class="w-full h-64 border-0" 
+                          sandbox="allow-scripts"
+                          title="SVG Preview"
+                          loading="lazy">
+                  </iframe>
+                </div>
+
+                <!-- Video container -->
+                <div class="media-video-container hidden mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <video controls class="w-full h-auto max-h-96" preload="metadata">
+                    <source src="{{ value }}">
+                    <p class="p-4 text-center text-gray-500 dark:text-gray-400">
+                      Your browser doesn't support HTML5 video. 
+                      <a href="{{ value }}" class="text-blue-600 underline">Download the video</a>.
+                    </p>
+                  </video>
+                </div>
+
+                <!-- PDF container -->
+                <div class="media-pdf-container hidden mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <iframe src="{{ value }}" 
+                          class="w-full h-96 border-0" 
+                          title="PDF Preview"
+                          loading="lazy">
+                    <p class="p-4 text-center text-gray-500 dark:text-gray-400">
+                      Unable to display PDF. 
+                      <a href="{{ value }}" target="_blank" class="text-blue-600 underline">Open in new tab</a>.
+                    </p>
+                  </iframe>
+                </div>
+
+                <!-- YouTube container -->
+                <div class="media-youtube-container hidden mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <iframe class="w-full h-64 border-0" 
+                          allowfullscreen
+                          title="YouTube Video"
+                          loading="lazy">
+                  </iframe>
+                </div>
+
+                <!-- Vimeo container -->
+                <div class="media-vimeo-container hidden mt-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                  <iframe class="w-full h-64 border-0" 
+                          allowfullscreen
+                          title="Vimeo Video"
+                          loading="lazy">
+                  </iframe>
+                </div>
+
+                <!-- Generic iframe container -->
+                <div class="media-iframe-container hidden mt-2">
+                  <button onclick="toggleGenericIframe(this)" 
+                          class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded mb-2">
+                    Preview in frame
+                  </button>
+                  <div class="iframe-content hidden border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+                    <iframe src="{{ value }}" 
+                            class="w-full h-64 border-0" 
+                            sandbox="allow-scripts allow-same-origin allow-forms"
+                            title="Content Preview"
+                            loading="lazy">
+                    </iframe>
+                  </div>
+                </div>
+
+                <!-- Regular text fallback -->
+                <div class="media-text-container">
+                  {{ value }}
+                </div>
+              </div>
             {% endif %}
           </dd>
         </div>
@@ -112,4 +206,117 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Process each field to detect media types
+  document.querySelectorAll('[data-value]').forEach(function(field) {
+    const value = field.getAttribute('data-value');
+    const mediaContent = field.querySelector('.media-content');
+    
+    if (!value || !mediaContent) return;
+    
+    // Check if it's a URL
+    const isUrl = /^https?:\/\//i.test(value);
+    
+    if (!isUrl) {
+      // Show as regular text
+      mediaContent.querySelector('.media-text-container').style.display = 'block';
+      mediaContent.querySelector('.media-url-link').style.display = 'none';
+      return;
+    }
+    
+    // It's a URL, so show the link
+    const urlLower = value.toLowerCase();
+    
+    // Regex patterns for different media types
+    const patterns = {
+      image: /\.(jpe?g|png|gif|bmp|webp|ico|tiff?)(\?.*)?$/i,
+      svg: /\.svg(\?.*)?$/i,
+      video: /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)(\?.*)?$/i,
+      pdf: /\.pdf(\?.*)?$/i,
+      youtube: /(youtube\.com\/watch\?v=|youtu\.be\/)/i,
+      vimeo: /vimeo\.com\//i
+    };
+    
+    let mediaType = null;
+    
+    // Check each pattern
+    for (const [type, pattern] of Object.entries(patterns)) {
+      if (pattern.test(value)) {
+        mediaType = type;
+        break;
+      }
+    }
+    
+    // Hide text container and show appropriate media container
+    mediaContent.querySelector('.media-text-container').style.display = 'none';
+    
+    if (mediaType === 'image') {
+      const container = mediaContent.querySelector('.media-image-container');
+      container.classList.remove('hidden');
+      // Expand to full width for images
+      field.classList.add('sm:col-span-2');
+      
+    } else if (mediaType === 'svg') {
+      const container = mediaContent.querySelector('.media-svg-container');
+      container.classList.remove('hidden');
+      field.classList.add('sm:col-span-2');
+      
+    } else if (mediaType === 'video') {
+      const container = mediaContent.querySelector('.media-video-container');
+      container.classList.remove('hidden');
+      field.classList.add('sm:col-span-2');
+      
+    } else if (mediaType === 'pdf') {
+      const container = mediaContent.querySelector('.media-pdf-container');
+      container.classList.remove('hidden');
+      field.classList.add('sm:col-span-2');
+      
+    } else if (mediaType === 'youtube') {
+      const container = mediaContent.querySelector('.media-youtube-container');
+      const iframe = container.querySelector('iframe');
+      
+      // Extract video ID
+      let videoId = '';
+      const match = value.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+      if (match) {
+        videoId = match[1];
+        iframe.src = `https://www.youtube.com/embed/${videoId}`;
+        container.classList.remove('hidden');
+        field.classList.add('sm:col-span-2');
+      }
+      
+    } else if (mediaType === 'vimeo') {
+      const container = mediaContent.querySelector('.media-vimeo-container');
+      const iframe = container.querySelector('iframe');
+      
+      // Extract video ID
+      const match = value.match(/vimeo\.com\/([0-9]+)/);
+      if (match) {
+        const videoId = match[1];
+        iframe.src = `https://player.vimeo.com/video/${videoId}`;
+        container.classList.remove('hidden');
+        field.classList.add('sm:col-span-2');
+      }
+      
+    } else {
+      // Show generic iframe option for other URLs
+      const container = mediaContent.querySelector('.media-iframe-container');
+      container.classList.remove('hidden');
+    }
+  });
+});
+
+function toggleGenericIframe(button) {
+  const content = button.nextElementSibling;
+  if (content.classList.contains('hidden')) {
+    content.classList.remove('hidden');
+    button.textContent = 'Hide preview';
+  } else {
+    content.classList.add('hidden');
+    button.textContent = 'Preview in frame';
+  }
+}
+</script>
 {% endblock content %}

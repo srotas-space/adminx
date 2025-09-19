@@ -180,7 +180,10 @@ pub fn convert_form_data_to_json(
     serde_json::Value::Object(json_data)
 }
 
-/// Handle resource creation response and return appropriate redirect
+
+/*-------------------------------------------------------------------------
+/// START Handle resource creation response and return appropriate redirect
+--------------------------------------------------------------------------*/
 pub fn handle_create_response(
     response: HttpResponse,
     base_path: &str,
@@ -201,7 +204,6 @@ pub fn handle_create_response(
     }
 }
 
-/// Handle resource update response and return appropriate redirect
 pub fn handle_update_response(
     response: HttpResponse,
     base_path: &str,
@@ -222,6 +224,11 @@ pub fn handle_update_response(
             .finish()
     }
 }
+/*-------------------------------------------------------------------------
+/// END Handle resource creation response and return appropriate redirect
+--------------------------------------------------------------------------*/
+
+
 
 /// Get default list structure for resources that don't define one
 pub fn get_default_list_structure() -> Value {
