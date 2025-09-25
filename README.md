@@ -7,6 +7,8 @@
 [![Downloads](https://img.shields.io/crates/d/adminx)](https://crates.io/crates/adminx)
 [![Recent Downloads](https://img.shields.io/crates/dr/adminx)](https://crates.io/crates/adminx)
 
+![AdminX](https://snmmaurya.s3.ap-south-1.amazonaws.com/AX.png)
+
 **AdminX** is a powerful, modern admin panel framework for Rust built on top of Actix Web and MongoDB. It provides a complete solution for creating administrative interfaces with minimal boilerplate code, featuring automatic CRUD operations, role-based access control, and a beautiful responsive UI.
 
 ## ✨ Features
