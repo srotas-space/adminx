@@ -3,8 +3,8 @@
 [![Crates.io](https://img.shields.io/crates/v/admix.svg)](https://crates.io/crates/admix)
 [![Docs.rs](https://docs.rs/admix/badge.svg)](https://docs.rs/admix)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)](https://github.com/snmmaurya/admix/issues)
-[![Project Status](https://img.shields.io/badge/status-actively--developed-brightgreen.svg)](https://github.com/snmmaurya/admix)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)](https://github.com/srotas-space/admix/issues)
+[![Project Status](https://img.shields.io/badge/status-actively--developed-brightgreen.svg)](https://github.com/srotas-space/admix)
 
 > **Admix** is a minimal, declarative admin dashboard framework for Rust (Actix + MongoDB).
 
@@ -129,9 +129,9 @@ This roadmap tracks all major features planned — organized by category and dev
 ## 📬 Contributing
 
 We ❤️ contributions!  
-- [Open an issue](https://github.com/snmmaurya/admix/issues) for bugs or feature requests  
-- [Start a discussion](https://github.com/snmmaurya/admix/discussions) to share ideas  
-- [Submit a PR](https://github.com/snmmaurya/admix/pulls) to help build the future of Admix  
+- [Open an issue](https://github.com/srotas-space/admix/issues) for bugs or feature requests  
+- [Start a discussion](https://github.com/srotas-space/admix/discussions) to share ideas  
+- [Submit a PR](https://github.com/srotas-space/admix/pulls) to help build the future of Admix  
 
 ---
 
