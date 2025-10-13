@@ -171,6 +171,9 @@
         {% endif %}
       {% endfor %}
     </dl>
+
+    {% set item_id = record.id | default(value=record.id) %}
+    {% include "view_custom_actions.html.tera" %}
   </div>
 
   <!-- Actions Footer -->

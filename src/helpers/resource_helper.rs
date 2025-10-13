@@ -13,6 +13,30 @@ use crate::configs::initializer::AdminxConfig;
 use crate::utils::auth::extract_claims_from_session;
 use crate::utils::structs::Claims;
 use crate::registry::get_registered_menus;
+use crate::actions::CustomAction;
+use serde_json::json;
+use crate::helpers::{
+    custom_helper::{
+        adapt_action_with_id,
+        adapt_action_get_with_id
+    }
+};
+
+pub fn actions_to_meta(actions: Vec<CustomAction>) -> Value {
+    let list: Vec<Value> = actions
+        .into_iter()
+        .map(|a| {
+            json!({
+                "name": a.name,
+                "method": a.method,
+                // if your CustomAction has `ui: Option<ActionUi>` (Serialize):
+                "ui": a.ui
+            })
+        })
+        .collect();
+    json!(list)
+}
+
 
 /// Check authentication and return user claims or redirect response
 pub async fn check_authentication(
@@ -803,29 +827,29 @@ pub fn register_api_only_routes(resource: Box<dyn AdmixResource>) -> Scope {
     // Add custom actions
     for action in resource.custom_actions() {
         let path = format!("/{{id}}/{}", action.name);
-        info!("Adding custom action: {} {} for resource: {}", action.method, path, resource_name);
-        
+
         match action.method {
             "POST" => {
-                scope = scope.route(&path, web::post().to(action.handler));
-            }
-            "GET" => {
-                scope = scope.route(&path, web::get().to(action.handler));
+                scope = scope.route(&path, web::post().to(adapt_action_with_id(action.handler)));
             }
             "PUT" => {
-                scope = scope.route(&path, web::put().to(action.handler));
-            }
-            "DELETE" => {
-                scope = scope.route(&path, web::delete().to(action.handler));
+                scope = scope.route(&path, web::put().to(adapt_action_with_id(action.handler)));
             }
             "PATCH" => {
-                scope = scope.route(&path, web::patch().to(action.handler));
+                scope = scope.route(&path, web::patch().to(adapt_action_with_id(action.handler)));
+            }
+            "GET" => {
+                scope = scope.route(&path, web::get().to(adapt_action_get_with_id(action.handler)));
+            }
+            "DELETE" => {
+                scope = scope.route(&path, web::delete().to(adapt_action_get_with_id(action.handler)));
             }
             method => {
-                error!("Unsupported HTTP method: {} for action: {} in resource: {}", method, action.name, resource_name);
+                error!("Unsupported HTTP method: {} for action: {}", method, action.name);
             }
         }
     }
+
 
     scope
 }

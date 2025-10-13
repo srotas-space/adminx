@@ -3,3 +3,4 @@ pub mod form_helper;
 pub mod resource_helper;
 pub mod auth_helper;
 pub mod downloads;
+pub mod custom_helper;

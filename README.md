@@ -750,3 +750,14 @@ Made with ❤️ by the [Rustacean360](https://srotas.space/rustacean360) Team
 
 [![GitHub stars](https://img.shields.io/github/stars/srotas-space/adminx?style=social)](https://github.com/srotas-space/adminx)
 
+
+## 💖 Support This Project
+
+If you find this crate useful, you can support its development:
+
+| 🇮🇳 UPI (India) |
+|-----------------|
+| <img src="https://srotas-space.s3.ap-south-1.amazonaws.com/google-pay.png" width="150" /> |
+
+Your support helps maintain open-source Rust tools like **QRush**, **AdminX**, and **BrightData Client**.
+

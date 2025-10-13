@@ -19,6 +19,7 @@ const TEMPLATE_FILES: &[(&str, &str)] = &[
     ("new.html.tera", include_str!("../templates/new.html.tera")),
     ("edit.html.tera", include_str!("../templates/edit.html.tera")),
     ("view.html.tera", include_str!("../templates/view.html.tera")),
+    ("view_custom_actions.html.tera", include_str!("../templates/view_custom_actions.html.tera")),
     ("login.html.tera", include_str!("../templates/login.html.tera")),
     ("profile.html.tera", include_str!("../templates/profile.html.tera")),
     ("stats.html.tera", include_str!("../templates/stats.html.tera")),

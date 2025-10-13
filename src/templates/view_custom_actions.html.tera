@@ -1,0 +1,209 @@
+<section id="actions-section" class="mt-6" hx-boost="false" data-turbo="false">
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-semibold">Actions</h2>
+    <div id="action-toast" class="hidden text-sm px-3 py-2 rounded border"></div>
+  </div>
+
+  {% if actions is defined %}
+    <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {% for act in actions %}
+        {% set act_name = act.name %}
+        {% set act_method = act.method | default(value="POST") %}
+
+        <div class="p-4 rounded-lg border">
+          <h3 class="font-medium mb-3">{{ act_name | upper }}</h3>
+
+          {% set has_fields = act.ui is defined and act.ui and act.ui.fields is defined and act.ui.fields %}
+          {% if has_fields %}
+            <form novalidate>
+              <div class="flex flex-col gap-3">
+                {% for f in act.ui.fields %}
+                  <div class="flex flex-col gap-1">
+                    <label class="text-sm text-gray-600">
+                      {% if f.label is defined and f.label %}{{ f.label }}{% else %}{{ f.name }}{% endif %}
+                    </label>
+
+                    {% if f.field_type == 'select' %}
+                      <select name="{{ f.name }}" class="border rounded px-2 py-1">
+                        {% if f.options is defined and f.options %}
+                          {% for opt in f.options %}
+                            {% if opt is object and opt.value is defined %}
+                              <option value="{{ opt.value }}">{{ opt.label | default(value=opt.value) }}</option>
+                            {% else %}
+                              <option value="{{ opt }}">{{ opt }}</option>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      </select>
+                    {% elif f.field_type == 'boolean' %}
+                      <select name="{{ f.name }}" class="border rounded px-2 py-1">
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                      </select>
+                    {% elif f.field_type == 'number' %}
+                      <input name="{{ f.name }}" type="number" class="border rounded px-2 py-1"
+                             {% if f.required is defined and f.required %}required{% endif %} />
+                    {% elif f.field_type == 'json' %}
+                      <textarea name="{{ f.name }}" rows="4" class="border rounded px-2 py-1 font-mono"
+                                {% if f.required is defined and f.required %}required{% endif %}></textarea>
+                    {% else %}
+                      <input name="{{ f.name }}" type="text" class="border rounded px-2 py-1"
+                             {% if f.required is defined and f.required %}required{% endif %} />
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+
+              <div class="mt-3 flex items-center gap-2">
+                <button
+                  class="px-3 py-1 rounded bg-blue-600 text-white"
+                  type="button"
+                  data-run
+                  data-base="{{ base_path | default(value='/adminx') }}"
+                  data-id="{{ item_id }}"
+                  data-name="{{ act_name }}"
+                  data-method="{{ act_method }}"
+                >Run</button>
+              </div>
+            </form>
+          {% else %}
+            <p class="text-sm text-gray-600 mb-2">Payload (JSON, optional)</p>
+            <textarea id="json-{{ act_name }}" rows="4" class="w-full border rounded px-2 py-1 font-mono"></textarea>
+            <div class="mt-2 flex items-center gap-2">
+              <button
+                class="px-3 py-1 rounded border"
+                type="button"
+                data-run
+                data-base="{{ base_path | default(value='/adminx') }}"
+                data-id="{{ item_id }}"
+                data-name="{{ act_name }}"
+                data-method="{{ act_method }}"
+                data-json-target="json-{{ act_name }}"
+              >Run</button>
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="text-sm text-gray-500 mt-2">No actions available.</p>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500 mt-2">No actions available.</p>
+  {% endif %}
+</section>
+
+<script>
+(function () {
+  function __headers() {
+    const base = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (window.CSRF_TOKEN) base['X-CSRF-Token'] = window.CSRF_TOKEN;
+    if (window.CUSTOM_HEADERS && typeof window.CUSTOM_HEADERS === 'object') Object.assign(base, window.CUSTOM_HEADERS);
+    return base;
+  }
+  function __tryParseJson(s) { try { return JSON.parse(s); } catch { return {}; } }
+  function __stripTrailing(p){ return String(p || '').replace(/\/+$/, ''); }
+
+  // Infer resource from current URL when needed: /adminx/<resource>/...
+  function __inferResourceFromLocation(){
+    const parts = location.pathname.split('/').filter(Boolean); // ['adminx','events','view','<id>']
+    const idx = parts.indexOf('adminx');
+    if (idx >= 0 && parts[idx+1]) return parts[idx+1]; // 'events'
+    return ''; // unknown
+  }
+
+  // Ensure base begins with /adminx/ and contains a resource segment
+  function __resolveBase(maybeBase){
+    let base = __stripTrailing((maybeBase || '').trim());
+
+    // Normalize leading slash
+    if (base && !base.startsWith('/')) base = '/' + base;
+
+    // If empty or just '/adminx', we must infer resource
+    if (!base || base === '/adminx') {
+      const resource = __inferResourceFromLocation();
+      return resource ? `/adminx/${resource}` : '/adminx'; // best effort
+    }
+
+    // If starts with '/adminx/<something>' we're good
+    if (base.startsWith('/adminx/')) {
+      const rest = base.slice('/adminx/'.length);
+      // If someone passed '/adminx//' or '/adminx///events', compress
+      return '/adminx/' + rest.replace(/^\/+/, '').split('/')[0];
+    }
+
+    // If they passed '/events' or 'events' -> coerce to '/adminx/events'
+    const tail = base.replace(/^\/+/, ''); // 'events' or 'users/...'
+    return '/adminx/' + tail.split('/')[0];
+  }
+
+  function __showToast(kind, msg) {
+    const el = document.getElementById('action-toast'); if (!el) return;
+    el.classList.remove('hidden','border-red-300','bg-red-50','text-red-700','border-green-300','bg-green-50','text-green-700');
+    if (kind === 'success') el.classList.add('border-green-300','bg-green-50','text-green-700'); else el.classList.add('border-red-300','bg-red-50','text-red-700');
+    el.textContent = String(msg || ''); clearTimeout(el.__t); el.__t = setTimeout(() => el.classList.add('hidden'), 3000);
+  }
+
+  async function __postAction(basePath, id, name, method, payload) {
+    const base = __resolveBase(basePath);                   // always '/adminx/<resource>'
+    const url  = `${base}/${encodeURIComponent(id)}/${encodeURIComponent(name)}`;
+    const verb = (method || 'POST').toUpperCase();
+    const opts = { method: verb, headers: __headers() };
+    if (verb !== 'GET' && verb !== 'HEAD') opts.body = JSON.stringify(payload && typeof payload === 'object' ? payload : {});
+    try {
+      const res = await fetch(url, opts);
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : { status: res.status, ok: res.ok };
+      if (!res.ok) { __showToast('error', (data && (data.message || data.error)) || `HTTP ${res.status}`); return; }
+      __showToast('success', (data && (data.message || 'Done')) || 'Done');
+      setTimeout(() => location.reload(), 600);
+    } catch (e) { __showToast('error', (e && e.message) ? e.message : 'Request failed'); }
+  }
+
+  function buildPayloadFromForm(form) {
+    const fd = new FormData(form); const payload = {};
+    for (const [k, raw] of fd.entries()) {
+      const v = String(raw).trim();
+      if (v === 'true') payload[k] = true;
+      else if (v === 'false') payload[k] = false;
+      else if (v !== '' && !isNaN(v)) payload[k] = Number(v);
+      else if (k.toLowerCase().includes('json') || k.toLowerCase().includes('payload')) {
+        const maybe = __tryParseJson(v); payload[k] = (maybe && typeof maybe === 'object' && Object.keys(maybe).length) ? maybe : v;
+      } else payload[k] = v;
+    }
+    return payload;
+  }
+
+  // Block native submits inside actions
+  document.addEventListener('submit', function(e){
+    const wrap = document.getElementById('actions-section'); if (!wrap) return;
+    if (wrap.contains(e.target)) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  // Delegated Run handler
+  document.addEventListener('click', function(e){
+    const wrap = document.getElementById('actions-section'); if (!wrap) return;
+    const btn = e.target.closest('[data-run]');
+    if (!btn || !wrap.contains(btn)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const base   = btn.dataset.base || ''; // may be '/adminx', '/adminx/events', 'events', etc.
+    const id     = btn.dataset.id   || '';
+    const name   = btn.dataset.name || '';
+    const method = btn.dataset.method || 'POST';
+    const jsonId = btn.dataset.jsonTarget;
+
+    let payload = {};
+    if (jsonId) {
+      const ta = document.getElementById(jsonId);
+      payload = __tryParseJson(ta ? ta.value : '{}');
+    } else {
+      const form = btn.closest('form');
+      payload = form ? buildPayloadFromForm(form) : {};
+    }
+
+    __postAction(base, id, name, method, payload);
+  }, true); // capture to beat row-level click handlers
+})();
+</script>

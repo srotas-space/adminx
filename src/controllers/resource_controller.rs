@@ -1,6 +1,6 @@
 // crates/adminx/src/controllers/resource_controller.rs
 use actix_web::{web, HttpRequest, HttpResponse, Scope};
-use serde_json::Value;
+use serde_json::{Value};
 use std::sync::Arc;
 use tracing::{info, warn, error};
 use actix_session::Session;
@@ -29,8 +29,16 @@ use crate::helpers::{
         get_default_view_structure,
         fetch_list_data,
         fetch_single_item_data,
+        actions_to_meta,
     }
 };
+use crate::helpers::{
+    custom_helper::{
+        adapt_action_with_id,
+        adapt_action_get_with_id
+    }
+};
+
 
 /// Register all UI + API routes for a resource
 pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope {
@@ -249,6 +257,14 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                                 ctx.insert("view_structure", &view_structure);
                                 ctx.insert("item_id", &item_id);
                                 ctx.insert("record", &record);
+
+                                // Collect actions and serialize metadata for the template
+                                let actions_meta = actions_to_meta(resource.custom_actions());
+
+                                // Make sure base_path and item_id are present for the template JS
+                                ctx.insert("base_path", &resource.base_path());
+                                ctx.insert("item_id", &item_id);
+                                ctx.insert("actions", &actions_meta);
 
                                 render_template("view.html.tera", ctx).await
                             }
@@ -570,29 +586,29 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
     // ========================
     for action in resource_arc.custom_actions() {
         let path = format!("/{{id}}/{}", action.name);
-        info!("Adding custom action: {} {} for resource: {}", action.method, path, resource_name);
-        
+
         match action.method {
             "POST" => {
-                scope = scope.route(&path, web::post().to(action.handler));
-            }
-            "GET" => {
-                scope = scope.route(&path, web::get().to(action.handler));
+                scope = scope.route(&path, web::post().to(adapt_action_with_id(action.handler)));
             }
             "PUT" => {
-                scope = scope.route(&path, web::put().to(action.handler));
-            }
-            "DELETE" => {
-                scope = scope.route(&path, web::delete().to(action.handler));
+                scope = scope.route(&path, web::put().to(adapt_action_with_id(action.handler)));
             }
             "PATCH" => {
-                scope = scope.route(&path, web::patch().to(action.handler));
+                scope = scope.route(&path, web::patch().to(adapt_action_with_id(action.handler)));
+            }
+            "GET" => {
+                scope = scope.route(&path, web::get().to(adapt_action_get_with_id(action.handler)));
+            }
+            "DELETE" => {
+                scope = scope.route(&path, web::delete().to(adapt_action_get_with_id(action.handler)));
             }
             method => {
-                error!("Unsupported HTTP method: {} for action: {} in resource: {}", method, action.name, resource_name);
+                error!("Unsupported HTTP method: {} for action: {}", method, action.name);
             }
         }
     }
+
 
     info!("✅ Successfully registered all routes for resource: {}", resource_name);
     scope
