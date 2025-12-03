@@ -109,178 +109,140 @@ pub trait AdmixResource: Send + Sync {
 
     // In your adminx crate: crates/adminx/src/resource.rs
 
-fn create(&self, _req: &HttpRequest, payload: Value) -> BoxFuture<'static, HttpResponse> {
-    // Extract everything we need BEFORE the async block
-    let collection = self.get_collection();
-    let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
-    let resource_name = self.resource_name().to_string();
-    
-    Box::pin(async move {
-        // Now _req is not captured in this async block
-        tracing::info!("Default create implementation for resource: {} with payload: {:?}", resource_name, payload);
+    fn create(&self, _req: &HttpRequest, payload: Value) -> BoxFuture<'static, HttpResponse> {
+        // Extract everything we need BEFORE the async block
+        let collection = self.get_collection();
+        let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
+        let resource_name = self.resource_name().to_string();
         
-        let mut clean_map = serde_json::Map::new();
-        if let Value::Object(map) = payload {
-            for (key, value) in map {
-                if permitted.contains(key.as_str()) {
-                    clean_map.insert(key, value);
+        Box::pin(async move {
+            // Now _req is not captured in this async block
+            tracing::info!("Default create implementation for resource: {} with payload: {:?}", resource_name, payload);
+            
+            let mut clean_map = serde_json::Map::new();
+            if let Value::Object(map) = payload {
+                for (key, value) in map {
+                    if permitted.contains(key.as_str()) {
+                        clean_map.insert(key, value);
+                    }
                 }
             }
-        }
 
-        let now = mongodb::bson::DateTime::now();
-        clean_map.insert("created_at".to_string(), json!(now));
-        clean_map.insert("updated_at".to_string(), json!(now));
+            let now = mongodb::bson::DateTime::now();
+            clean_map.insert("created_at".to_string(), json!(now));
+            clean_map.insert("updated_at".to_string(), json!(now));
 
-        if permitted.contains("deleted") && !clean_map.contains_key("deleted") {
-            clean_map.insert("deleted".to_string(), json!(false));
-        }
-
-        tracing::debug!("Cleaned payload for {}: {:?}", resource_name, clean_map);
-
-        match mongodb::bson::to_document(&Value::Object(clean_map)) {
-            Ok(document) => {
-                match collection.insert_one(document, None).await {
-                    Ok(insert_result) => {
-                        tracing::info!("Document created successfully for {}: {:?}", resource_name, insert_result.inserted_id);
-                        HttpResponse::Created().json(json!({
-                            "success": true,
-                            "message": format!("{} created successfully", resource_name),
-                            "id": insert_result.inserted_id
-                        }))
-                    },
-                    Err(e) => {
-                        tracing::error!("Error inserting document for {}: {}", resource_name, e);
-                        AdminxError::InternalError.error_response()
-                    }
-                }
-            },
-            Err(e) => {
-                tracing::error!("Error converting payload to BSON for {}: {}", resource_name, e);
-                AdminxError::BadRequest("Invalid input data".into()).error_response()
+            if permitted.contains("deleted") && !clean_map.contains_key("deleted") {
+                clean_map.insert("deleted".to_string(), json!(false));
             }
-        }
-    })
-}
 
-fn update(&self, _req: &HttpRequest, id: String, payload: Value) -> BoxFuture<'static, HttpResponse> {
-    // Extract everything we need BEFORE the async block
-    let collection = self.get_collection();
-    let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
-    let resource_name = self.resource_name().to_string();
-    
-    Box::pin(async move {
-        // Now _req is not captured in this async block
-        tracing::info!("Default update implementation for resource: {} with id: {} and payload: {:?}", 
-                     resource_name, id, payload);
-        
-        match ObjectId::parse_str(&id) {
-            Ok(oid) => {
-                let mut clean_map = serde_json::Map::new();
-                if let Value::Object(map) = payload {
-                    for (key, value) in map {
-                        if permitted.contains(key.as_str()) {
-                            clean_map.insert(key, value);
-                        }
-                    }
-                }
+            tracing::debug!("Cleaned payload for {}: {:?}", resource_name, clean_map);
 
-                clean_map.insert("updated_at".to_string(), json!(mongodb::bson::DateTime::now()));
-
-                let bson_payload: Document = match mongodb::bson::to_document(&Value::Object(clean_map)) {
-                    Ok(doc) => doc,
-                    Err(e) => {
-                        tracing::error!("Error converting payload to BSON for {}: {}", resource_name, e);
-                        return AdminxError::BadRequest("Invalid payload format".into()).error_response();
-                    }
-                };
-
-                let update_doc = doc! { "$set": bson_payload };
-
-                match collection.update_one(doc! { "_id": oid }, update_doc, None).await {
-                    Ok(result) => {
-                        if result.modified_count > 0 {
-                            tracing::info!("Document {} updated successfully for {}", id, resource_name);
-                            HttpResponse::Ok().json(json!({
+            match mongodb::bson::to_document(&Value::Object(clean_map)) {
+                Ok(document) => {
+                    match collection.insert_one(document, None).await {
+                        Ok(insert_result) => {
+                            tracing::info!("Document created successfully for {}: {:?}", resource_name, insert_result.inserted_id);
+                            HttpResponse::Created().json(json!({
                                 "success": true,
-                                "message": format!("{} updated successfully", resource_name),
-                                "modified_count": result.modified_count
+                                "message": format!("{} created successfully", resource_name),
+                                "id": insert_result.inserted_id
                             }))
-                        } else {
-                            tracing::warn!("No document found to update with id: {} for {}", id, resource_name);
-                            AdminxError::NotFound.error_response()
+                        },
+                        Err(e) => {
+                            tracing::error!("Error inserting document for {}: {}", resource_name, e);
+                            AdminxError::InternalError.error_response()
                         }
-                    },
-                    Err(e) => {
-                        tracing::error!("Error updating document {} for {}: {}", id, resource_name, e);
-                        AdminxError::InternalError.error_response()
                     }
+                },
+                Err(e) => {
+                    tracing::error!("Error converting payload to BSON for {}: {}", resource_name, e);
+                    AdminxError::BadRequest("Invalid input data".into()).error_response()
                 }
             }
-            Err(e) => {
-                tracing::error!("Invalid ObjectId {} for {}: {}", id, resource_name, e);
-                AdminxError::BadRequest("Invalid ID format".into()).error_response()
-            }
-        }
-    })
-}
+        })
+    }
 
+    fn update(&self, _req: &HttpRequest, id: String, payload: Value) -> BoxFuture<'static, HttpResponse> {
+        // Extract everything we need BEFORE the async block
+        let collection = self.get_collection();
+        let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
+        let resource_name = self.resource_name().to_string();
+        
+        Box::pin(async move {
+            // Now _req is not captured in this async block
+            tracing::info!("Default update implementation for resource: {} with id: {} and payload: {:?}", 
+                         resource_name, id, payload);
+            
+            match ObjectId::parse_str(&id) {
+                Ok(oid) => {
+                    let mut clean_map = serde_json::Map::new();
+                    if let Value::Object(map) = payload {
+                        for (key, value) in map {
+                            if permitted.contains(key.as_str()) {
+                                clean_map.insert(key, value);
+                            }
+                        }
+                    }
 
-fn create_with_files(
-    &self,
-    _req: &HttpRequest,
-    mut form_data: std::collections::HashMap<String, String>,
-    files: std::collections::HashMap<String, (String, Vec<u8>)>,
-) -> futures::future::BoxFuture<'static, actix_web::HttpResponse> {
-    let resource = self.clone_box();
+                    clean_map.insert("updated_at".to_string(), json!(mongodb::bson::DateTime::now()));
 
-    Box::pin(async move {
-        // 1) पहले फाइल अपलोड प्रोसेस कर लें
-        for (field_name, (filename, file_data)) in files {
-            match resource.process_file_upload(&field_name, &file_data, &filename).await {
-                Ok(upload_results) => {
-                    for (k, v) in upload_results {
-                        form_data.insert(k, v);
+                    let bson_payload: Document = match mongodb::bson::to_document(&Value::Object(clean_map)) {
+                        Ok(doc) => doc,
+                        Err(e) => {
+                            tracing::error!("Error converting payload to BSON for {}: {}", resource_name, e);
+                            return AdminxError::BadRequest("Invalid payload format".into()).error_response();
+                        }
+                    };
+
+                    let update_doc = doc! { "$set": bson_payload };
+
+                    match collection.update_one(doc! { "_id": oid }, update_doc, None).await {
+                        Ok(result) => {
+                            if result.modified_count > 0 {
+                                tracing::info!("Document {} updated successfully for {}", id, resource_name);
+                                HttpResponse::Ok().json(json!({
+                                    "success": true,
+                                    "message": format!("{} updated successfully", resource_name),
+                                    "modified_count": result.modified_count
+                                }))
+                            } else {
+                                tracing::warn!("No document found to update with id: {} for {}", id, resource_name);
+                                AdminxError::NotFound.error_response()
+                            }
+                        },
+                        Err(e) => {
+                            tracing::error!("Error updating document {} for {}: {}", id, resource_name, e);
+                            AdminxError::InternalError.error_response()
+                        }
                     }
                 }
                 Err(e) => {
-                    tracing::error!("File upload failed for field {}: {:?}", field_name, e);
-                    return actix_web::HttpResponse::BadRequest().json(serde_json::json!({
-                        "error": format!("File upload failed: {:?}", e)
-                    }));
+                    tracing::error!("Invalid ObjectId {} for {}: {}", id, resource_name, e);
+                    AdminxError::BadRequest("Invalid ID format".into()).error_response()
                 }
             }
-        }
+        })
+    }
 
-        // 2) form_data → JSON
-        let json_payload = convert_form_data_to_json(form_data);
 
-        // 3) ⬇️ HttpRequest को inner scope में बनाइए; future निकालिए; फिर outer में await कीजिए
-        let fut = {
-            let test_req = actix_web::test::TestRequest::default().to_http_request();
-            resource.create(&test_req, json_payload)
-        };
+    fn create_with_files(
+        &self,
+        _req: &HttpRequest,
+        mut form_data: std::collections::HashMap<String, String>,
+        files: std::collections::HashMap<String, (String, Vec<u8>)>,
+    ) -> futures::future::BoxFuture<'static, actix_web::HttpResponse> {
+        let resource = self.clone_box();
 
-        // अब यहाँ HttpRequest drop हो चुका होगा, इसलिए future `Send` रहेगा
-        fut.await
-    })
-}
-
-fn update_with_files(
-    &self,
-    _req: &HttpRequest,
-    id: String,
-    mut form_data: std::collections::HashMap<String, String>,
-    files: std::collections::HashMap<String, (String, Vec<u8>)>,
-) -> futures::future::BoxFuture<'static, actix_web::HttpResponse> {
-    let resource = self.clone_box();
-
-    Box::pin(async move {
-        for (field_name, (filename, file_data)) in files {
-            if !file_data.is_empty() {
+        Box::pin(async move {
+            // 1) first finish file upload process
+            for (field_name, (filename, file_data)) in files {
                 match resource.process_file_upload(&field_name, &file_data, &filename).await {
                     Ok(upload_results) => {
                         for (k, v) in upload_results {
+
+                            println!("k!!!!!!!!! {:?}", v);
+
                             form_data.insert(k, v);
                         }
                     }
@@ -292,153 +254,62 @@ fn update_with_files(
                     }
                 }
             }
-        }
 
-        let json_payload = convert_form_data_to_json(form_data);
+            // 2) form_data → JSON
+            let json_payload = convert_form_data_to_json(form_data);
 
-        let fut = {
-            let test_req = actix_web::test::TestRequest::default().to_http_request();
-            resource.update(&test_req, id, json_payload)
-        };
+            // 3) ⬇️ HttpRequest को inner scope में बनाइए; future निकालिए; फिर outer में await कीजिए
+            let fut = {
+                let test_req = actix_web::test::TestRequest::default().to_http_request();
 
-        fut.await
-    })
-}
+                println!("WOW!!!!!!!!! {:#?}", json_payload);
+                resource.create(&test_req, json_payload)
+            };
 
-// fn create_with_files(
-//     &self,
-//     _req: &HttpRequest,
-//     mut form_data: HashMap<String, String>,
-//     files: HashMap<String, (String, Vec<u8>)>,
-// ) -> BoxFuture<'static, HttpResponse> {
-//     let resource = self.clone_box();
-    
-//     Box::pin(async move {
-//         // Process each uploaded file
-//         for (field_name, (filename, file_data)) in files {
-//             match resource.process_file_upload(&field_name, &file_data, &filename).await {
-//                 Ok(upload_results) => {
-//                     for (key, value) in upload_results {
-//                         form_data.insert(key, value);
-//                     }
-//                 }
-//                 Err(e) => {
-//                     tracing::error!("File upload failed for field {}: {:?}", field_name, e);
-//                     return HttpResponse::BadRequest().json(serde_json::json!({
-//                         "error": format!("File upload failed: {:?}", e)
-//                     }));
-//                 }
-//             }
-//         }
-        
-//         let json_payload = crate::helpers::resource_helper::convert_form_data_to_json(form_data);
-//         let test_req = actix_web::test::TestRequest::default().to_http_request();
-//         resource.create(&test_req, json_payload).await
-//     })
-// }
+            // अब यहाँ HttpRequest drop हो चुका होगा, इसलिए future `Send` रहेगा
+            fut.await
+        })
+    }
 
-// fn update_with_files(
-//     &self,
-//     _req: &HttpRequest,
-//     id: String,
-//     mut form_data: HashMap<String, String>,
-//     files: HashMap<String, (String, Vec<u8>)>,
-// ) -> BoxFuture<'static, HttpResponse> {
-//     let resource = self.clone_box();
-    
-//     Box::pin(async move {
-//         for (field_name, (filename, file_data)) in files {
-//             if !file_data.is_empty() {
-//                 match resource.process_file_upload(&field_name, &file_data, &filename).await {
-//                     Ok(upload_results) => {
-//                         for (key, value) in upload_results {
-//                             form_data.insert(key, value);
-//                         }
-//                     }
-//                     Err(e) => {
-//                         tracing::error!("File upload failed for field {}: {:?}", field_name, e);
-//                         return HttpResponse::BadRequest().json(serde_json::json!({
-//                             "error": format!("File upload failed: {:?}", e)
-//                         }));
-//                     }
-//                 }
-//             }
-//         }
-        
-//         let json_payload = crate::helpers::resource_helper::convert_form_data_to_json(form_data);
-//         let test_req = actix_web::test::TestRequest::default().to_http_request();
-//         resource.update(&test_req, id, json_payload).await
-//     })
-// }
+    fn update_with_files(
+        &self,
+        _req: &HttpRequest,
+        id: String,
+        mut form_data: std::collections::HashMap<String, String>,
+        files: std::collections::HashMap<String, (String, Vec<u8>)>,
+    ) -> futures::future::BoxFuture<'static, actix_web::HttpResponse> {
+        let resource = self.clone_box();
 
-    // fn create_with_files(
-    //     &self,
-    //     _req: &HttpRequest,
-    //     mut form_data: HashMap<String, String>,
-    //     files: HashMap<String, (String, Vec<u8>)>,
-    // ) -> BoxFuture<'static, HttpResponse> {
-    //     let resource = self.clone_box();
-        
-    //     Box::pin(async move {
-    //         // Process each uploaded file
-    //         for (field_name, (filename, file_data)) in files {
-    //             match resource.process_file_upload(&field_name, &file_data, &filename).await {
-    //                 Ok(upload_results) => {
-    //                     for (key, value) in upload_results {
-    //                         form_data.insert(key, value);
-    //                     }
-    //                 }
-    //                 Err(e) => {
-    //                     tracing::error!("File upload failed for field {}: {:?}", field_name, e);
-    //                     return HttpResponse::BadRequest().json(serde_json::json!({
-    //                         "error": format!("File upload failed: {:?}", e)
-    //                     }));
-    //                 }
-    //             }
-    //         }
-            
-    //         let json_payload = crate::helpers::resource_helper::convert_form_data_to_json(form_data);
-    //         // Create the test request inside the async block, use it immediately, then drop it
-    //         {
-    //             let test_req = actix_web::test::TestRequest::default().to_http_request();
-    //             resource.create(&test_req, json_payload).await
-    //         }
-    //     })
-    // }
+        Box::pin(async move {
+            for (field_name, (filename, file_data)) in files {
+                if !file_data.is_empty() {
+                    match resource.process_file_upload(&field_name, &file_data, &filename).await {
+                        Ok(upload_results) => {
+                            for (k, v) in upload_results {
+                                form_data.insert(k, v);
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("File upload failed for field {}: {:?}", field_name, e);
+                            return actix_web::HttpResponse::BadRequest().json(serde_json::json!({
+                                "error": format!("File upload failed: {:?}", e)
+                            }));
+                        }
+                    }
+                }
+            }
 
-    // fn update_with_files(
-    //     &self,
-    //     _req: &HttpRequest,
-    //     id: String,
-    //     mut form_data: HashMap<String, String>,
-    //     files: HashMap<String, (String, Vec<u8>)>,
-    // ) -> BoxFuture<'static, HttpResponse> {
-    //     let resource = self.clone_box();
-        
-    //     Box::pin(async move {
-    //         for (field_name, (filename, file_data)) in files {
-    //             if !file_data.is_empty() {
-    //                 match resource.process_file_upload(&field_name, &file_data, &filename).await {
-    //                     Ok(upload_results) => {
-    //                         for (key, value) in upload_results {
-    //                             form_data.insert(key, value);
-    //                         }
-    //                     }
-    //                     Err(e) => {
-    //                         tracing::error!("File upload failed for field {}: {:?}", field_name, e);
-    //                         return HttpResponse::BadRequest().json(serde_json::json!({
-    //                             "error": format!("File upload failed: {:?}", e)
-    //                         }));
-    //                     }
-    //                 }
-    //             }
-    //         }
-            
-    //         let json_payload = crate::helpers::resource_helper::convert_form_data_to_json(form_data);
-    //         let test_req = actix_web::test::TestRequest::default().to_http_request();
-    //         resource.update(&test_req, id, json_payload).await
-    //     })
-    // }
+            let json_payload = convert_form_data_to_json(form_data);
+
+            let fut = {
+                let test_req = actix_web::test::TestRequest::default().to_http_request();
+                resource.update(&test_req, id, json_payload)
+            };
+
+            fut.await
+        })
+    }
+
     /* -----------------------------------------------------------
     END - Image specific resource
     ------------------------------------------------------------ */

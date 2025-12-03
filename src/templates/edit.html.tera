@@ -446,12 +446,26 @@
                 </div>
               
               {% elif field.field_type == "file" %}
+                {# figure out the existing file URL on edit page #}
+                {% set file_data = record[field.name] | default(value="") %}
+
+                {% if file_data %}
+                  <!-- Existing file preview (same HTML as view page but using file_data) -->
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Current file: <a href="{{ file_data }}" target="_blank" class="text-blue-600 underline">open</a>.  
+                    Upload a new file to replace.
+                  </p>
+                {% endif %}
+
+                <!-- File input (same as before) -->
                 <input type="file" 
-                     name="{{ field.name }}" 
-                     id="{{ field.name }}" 
-                     {% if field.accept %}accept="{{ field.accept }}"{% endif %}
-                     class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full max-w-md px-3 py-3 text-base border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                     {% if field.required %}required{% endif %}>
+                       name="{{ field.name }}" 
+                       id="{{ field.name }}" 
+                       {% if field.accept %}accept="{{ field.accept }}"{% endif %}
+                       class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full max-w-md px-3 py-3 text-base border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                       {% if field.required and not file_data %}required{% endif %}>
+
+
          
               {% elif field.field_type == "date" %}
                 <input type="date" 

@@ -289,11 +289,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
             let resource = Arc::clone(&resource);
             let resource_name = resource_name.clone();
             let base_path = base_path.clone();
+
             async move {
                 match check_authentication(&session, &config, &resource_name, "edit").await {
                     Ok(claims) => {
                         let item_id = id.into_inner();
-                        info!("✅ Edit form UI accessed by: {} for resource: {} item: {}", claims.email, resource_name, item_id);
+                        println!("✅ Edit form UI accessed by: {:?} for resource: {:?} item: {:?}", claims.email, resource_name, item_id);
                         
                         let mut ctx = create_base_template_context(&resource_name, &base_path, &claims);
                         
@@ -305,11 +306,6 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                                     .unwrap_or_else(|| get_default_form_structure());
 
                                 let form_map = to_map(&form);
-
-                                // let mut cleaned_record = serde_json::Value::Object(raw_record.clone());
-                                // coerce_editor_json_fields(&mut cleaned_record, &form_map);
-                                // // Transform the raw MongoDB data using form structure
-                                // // let cleaned_record = coerce_editor_json_fields(&raw_record, &form_map);
 
                                 // println!("cleaned_record: {:?}", cleaned_record);
                                 ctx.insert("fields", &extract_fields_for_form(&form_map));

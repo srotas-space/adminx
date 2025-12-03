@@ -7,11 +7,9 @@
         © {{ now() | date(format="%Y") }} <span class="font-semibold text-slate-900 dark:text-white">AdminX</span>. All rights reserved.
       </p>
       <nav class="flex items-center gap-4 text-sm">
-        <a href="https://adminx.snmmaurya.com/privacy" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Privacy</a>
+        <a href="https://srotas.space/solutions/adminx/terms" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Terms</a>
         <span class="text-slate-300 dark:text-slate-600">•</span>
-        <a href="https://adminx.snmmaurya.com/terms" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Terms</a>
-        <span class="text-slate-300 dark:text-slate-600">•</span>
-        <a href="https://adminx.snmmaurya.com/support" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Support</a>
+        <a href="https://srotas.space/solutions/adminx/support" class="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Support</a>
       </nav>
     </div>
   </div>

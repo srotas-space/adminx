@@ -1,6 +1,6 @@
 [package]
 name = "adminx"
-version = "0.2.5"
+version = "0.2.4"
 edition = "2021"
 rust-version = "1.89.0"
 authors = ["Snm Maurya <xsmmaurya@gmail.com>", "Deepak Maurya <deepxmaurya@gmail.com>"]

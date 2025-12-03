@@ -7,7 +7,7 @@
 [![Downloads](https://img.shields.io/crates/d/adminx)](https://crates.io/crates/adminx)
 [![Recent Downloads](https://img.shields.io/crates/dr/adminx)](https://crates.io/crates/adminx)
 
-![AdminX](https://snmmaurya.s3.ap-south-1.amazonaws.com/AX.png)
+![AdminX](https://srotas-suite-space.s3.ap-south-1.amazonaws.com/nsadmin.png)
 
 **AdminX** is a powerful, modern admin panel framework for Rust built on top of Actix Web and MongoDB. It provides a complete solution for creating administrative interfaces with minimal boilerplate code, featuring automatic CRUD operations, role-based access control, and a beautiful responsive UI.
 
@@ -80,7 +80,7 @@ Add AdminX to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-adminx = "0.1.0"
+adminx = "0.2.4"
 actix-web = "4"
 mongodb = { version = "2.4", features = ["tokio-runtime"] }
 tokio = { version = "1", features = ["full"] }
@@ -734,30 +734,20 @@ The roadmap includes phases like core CRUD foundation, extended resource feature
 ---
 
 
+Made with ❤️ by the [Srotas Space] (https://srotas.space/open-source)
 
-Made with ❤️ by the [Rustacean360](https://srotas.space/rustacean360) Team
+---
 
 
 ## 👥 Contributors
 
 - **[Snm Maurya](https://github.com/xsmmaurya)** - Creator & Lead Developer
-  <img src="https://srotas-space.s3.ap-south-1.amazonaws.com/snm.jpg" alt="Snm Maurya" width="80" height="80" style="border-radius: 50%;">
+  <img src="https://srotas-suite-space.s3.ap-south-1.amazonaws.com/snm.jpeg" alt="Snm Maurya" width="80" height="80" style="border-radius: 50%;">
   [LinkedIn](https://www.linkedin.com/in/xsmmaurya/)
 
 - **[Deepak Maurya](https://github.com/deepxmaurya)** - Core Developer & Contributor
-  <img src="https://srotas-space.s3.ap-south-1.amazonaws.com/srotas-icon-1024.png" alt="Deepak Maurya" width="80" height="80" style="border-radius: 50%;"> 
+  <img src="https://srotas-suite-space.s3.ap-south-1.amazonaws.com/deepx.jpeg" alt="Deepak Maurya" width="80" height="80" style="border-radius: 50%;"> 
   [LinkedIn](https://www.linkedin.com/in/deepxmaurya/)
 
 [![GitHub stars](https://img.shields.io/github/stars/srotas-space/adminx?style=social)](https://github.com/srotas-space/adminx)
-
-
-## 💖 Support This Project
-
-If you find this crate useful, you can support its development:
-
-| 🇮🇳 UPI (India) |
-|-----------------|
-| <img src="https://srotas-space.s3.ap-south-1.amazonaws.com/google-pay.png" width="150" /> |
-
-Your support helps maintain open-source Rust tools like **QRush**, **AdminX**, and **BrightData Client**.
 

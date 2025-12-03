@@ -45,11 +45,11 @@
         {{ resource_name | capitalize }} Details
       </h2>
       <div class="flex gap-2">
-        <a href="{{ base_path }}/edit/{{ record.id }}" 
+        <a href="/adminx/{{ base_path }}/edit/{{ record.id }}" 
            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
           Edit
         </a>
-        <a href="{{ base_path }}/list" 
+        <a href="/adminx/{{ base_path }}/list" 
            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
           Back to List
         </a>
