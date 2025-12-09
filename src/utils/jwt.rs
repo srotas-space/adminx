@@ -2,7 +2,7 @@
 use jsonwebtoken::{encode, EncodingKey, Header};
 use anyhow::{Result, Context};
 use crate::configs::initializer::AdminxConfig;
-use crate::utils::structs::Claims; // ✅ Use centralized Claims from structs.rs
+use crate::utils::structs::Claims;
 
 pub fn create_jwt_token(
     user_id: &str, 
@@ -151,6 +151,7 @@ pub fn time_until_expiration(claims: &Claims) -> Option<chrono::Duration> {
 mod tests {
     use super::*;
     use std::time::Duration;
+    use crate::configs::initializer::BasicAuthConfig;
     
     fn test_config() -> AdminxConfig {
         AdminxConfig {
@@ -159,6 +160,10 @@ mod tests {
             environment: "test".to_string(),
             log_level: "debug".to_string(),
             session_timeout: Duration::from_secs(3600),
+            basic_auth: Some(BasicAuthConfig {
+                username: "adminx".to_string(),
+                password: "password".to_string(),
+            }),
         }
     }
     

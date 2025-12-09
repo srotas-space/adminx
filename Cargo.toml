@@ -1,6 +1,6 @@
 [package]
 name = "adminx"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2021"
 rust-version = "1.89.0"
 authors = ["Snm Maurya <xsmmaurya@gmail.com>", "Deepak Maurya <deepxmaurya@gmail.com>"]
@@ -100,6 +100,7 @@ rust-embed = "8.7.2"
 mime_guess = "2.0.5"
 regex = "1.11.2"
 actix-multipart = "0.7.2"
+http = "1.4.0"
 
 [dev-dependencies]
 actix-rt = "2"

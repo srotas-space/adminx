@@ -3,11 +3,12 @@
 [![Crates.io](https://img.shields.io/crates/v/adminx)](https://crates.io/crates/adminx)
 [![Documentation](https://docs.rs/adminx/badge.svg)](https://docs.rs/adminx)
 [![License](https://img.shields.io/crates/l/adminx)](LICENSE)
-[![Build Status](https://github.com/xsmmaurya/adminx/workflows/CI/badge.svg)](https://github.com/xsmmaurya/adminx/actions)
 [![Downloads](https://img.shields.io/crates/d/adminx)](https://crates.io/crates/adminx)
 [![Recent Downloads](https://img.shields.io/crates/dr/adminx)](https://crates.io/crates/adminx)
 
 ![AdminX](https://srotas-suite-space.s3.ap-south-1.amazonaws.com/nsadmin.png)
+
+![How to Use Sample Starter Template](https://github.com/srotas-space/adminx-examples)
 
 **AdminX** is a powerful, modern admin panel framework for Rust built on top of Actix Web and MongoDB. It provides a complete solution for creating administrative interfaces with minimal boilerplate code, featuring automatic CRUD operations, role-based access control, and a beautiful responsive UI.
 
@@ -80,7 +81,7 @@ Add AdminX to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-adminx = "0.2.4"
+adminx = "0.2.5"
 actix-web = "4"
 mongodb = { version = "2.4", features = ["tokio-runtime"] }
 tokio = { version = "1", features = ["full"] }
@@ -730,7 +731,7 @@ The roadmap includes phases like core CRUD foundation, extended resource feature
 
 [![Project Status](https://img.shields.io/badge/status-actively--developed-brightgreen.svg)](https://github.com/srotas-space/adminx)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)](https://github.com/srotas-space/adminx/issues)
-
+![How to Use Sample Starter Template](https://github.com/srotas-space/adminx-examples)
 ---
 
 

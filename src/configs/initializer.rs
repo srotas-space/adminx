@@ -14,6 +14,14 @@ use crate::utils::{
     },
 };
 
+
+#[derive(Clone, Debug)]
+pub struct BasicAuthConfig {
+    pub username: String,
+    pub password: String,
+}
+
+
 #[derive(Debug, Clone)]
 pub struct AdminxConfig {
     pub jwt_secret: String,
@@ -21,32 +29,66 @@ pub struct AdminxConfig {
     pub environment: String,
     pub log_level: String,
     pub session_timeout: Duration,
+    pub basic_auth: Option<BasicAuthConfig>,
 }
 
 impl AdminxConfig {
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error>> {
+        // JWT is mandatory
+        let jwt_secret = env::var("JWT_SECRET")
+            .map_err(|_| "JWT_SECRET is required")?;
+
+        // Optional Basic Auth: ADMINX_BASIC_AUTH="user:password"
+        let basic_auth = match env::var("ADMINX_BASIC_AUTH") {
+            Ok(raw) => {
+                let parts: Vec<&str> = raw.splitn(2, ':').collect();
+                if parts.len() != 2 {
+                    return Err("ADMINX_BASIC_AUTH must be in 'user:password' format".into());
+                }
+
+                Some(BasicAuthConfig {
+                    username: parts[0].to_string(),
+                    password: parts[1].to_string(),
+                })
+            }
+            Err(_) => {
+                // Not set -> Basic Auth disabled
+                None
+            }
+        };
+
+        let session_secret = env::var("SESSION_SECRET").unwrap_or_else(|_| {
+            if cfg!(debug_assertions) {
+                warn!(
+                    "⚠️  SESSION_SECRET not set, using generated key - \
+                     NOT suitable for production!"
+                );
+                String::new() // Will trigger key generation elsewhere
+            } else {
+                panic!("SESSION_SECRET is required in production");
+            }
+        });
+
+        let environment = env::var("ENVIRONMENT")
+            .unwrap_or_else(|_| "development".to_string());
+
+        let log_level = env::var("RUST_LOG")
+            .unwrap_or_else(|_| "debug".to_string());
+
+        let session_timeout = Duration::from_secs(
+            env::var("SESSION_TIMEOUT")
+                .unwrap_or_else(|_| "86400".to_string())
+                .parse()
+                .unwrap_or(86400),
+        );
+
         Ok(Self {
-            jwt_secret: env::var("JWT_SECRET")
-                .map_err(|_| "JWT_SECRET is required")?,
-            session_secret: env::var("SESSION_SECRET")
-                .unwrap_or_else(|_| {
-                    if cfg!(debug_assertions) {
-                        warn!("⚠️  SESSION_SECRET not set, using generated key - NOT suitable for production!");
-                        String::new() // Will trigger key generation
-                    } else {
-                        panic!("SESSION_SECRET is required in production");
-                    }
-                }),
-            environment: env::var("ENVIRONMENT")
-                .unwrap_or_else(|_| "development".to_string()),
-            log_level: env::var("RUST_LOG")
-                .unwrap_or_else(|_| "debug".to_string()),
-            session_timeout: Duration::from_secs(
-                env::var("SESSION_TIMEOUT")
-                    .unwrap_or_else(|_| "86400".to_string())
-                    .parse()
-                    .unwrap_or(86400)
-            ),
+            jwt_secret,
+            basic_auth,
+            session_secret,
+            environment,
+            log_level,
+            session_timeout,
         })
     }
     
