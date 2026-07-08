@@ -240,9 +240,6 @@ pub trait AdmixResource: Send + Sync {
                 match resource.process_file_upload(&field_name, &file_data, &filename).await {
                     Ok(upload_results) => {
                         for (k, v) in upload_results {
-
-                            println!("k!!!!!!!!! {:?}", v);
-
                             form_data.insert(k, v);
                         }
                     }
@@ -258,15 +255,13 @@ pub trait AdmixResource: Send + Sync {
             // 2) form_data → JSON
             let json_payload = convert_form_data_to_json(form_data);
 
-            // 3) ⬇️ HttpRequest को inner scope में बनाइए; future निकालिए; फिर outer में await कीजिए
+            // 3) Build the HttpRequest in an inner scope so it is dropped before the
+            //    future is awaited — this keeps the returned future `Send`.
             let fut = {
                 let test_req = actix_web::test::TestRequest::default().to_http_request();
-
-                println!("WOW!!!!!!!!! {:#?}", json_payload);
                 resource.create(&test_req, json_payload)
             };
 
-            // अब यहाँ HttpRequest drop हो चुका होगा, इसलिए future `Send` रहेगा
             fut.await
         })
     }

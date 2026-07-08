@@ -81,7 +81,7 @@ Add AdminX to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-adminx = "0.2.6"
+adminx = "0.2.7"
 actix-web = "4"
 mongodb = { version = "2.4", features = ["tokio-runtime"] }
 tokio = { version = "1", features = ["full"] }
