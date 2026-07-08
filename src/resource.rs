@@ -142,7 +142,7 @@ pub trait AdmixResource: Send + Sync {
                 clean_map.insert("deleted".to_string(), json!(false));
             }
 
-            tracing::debug!("Cleaned payload for {}: {:?}", resource_name, clean_map);
+            tracing::debug!("Create for {}: {} field(s) after filtering", resource_name, clean_map.len());
 
             match mongodb::bson::to_document(&Value::Object(clean_map)) {
                 Ok(document) => {

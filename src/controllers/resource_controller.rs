@@ -359,7 +359,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         info!("✅ Create form submitted by: {} for resource: {}", claims.email, resource_name);
                         
                         let json_payload = convert_form_data_to_json(form_data.into_inner());
-                        tracing::debug!("Converted form data to JSON: {:?}", json_payload);
+                        tracing::debug!(
+                            "Parsed form data: {} field(s)",
+                            json_payload.as_object().map(|m| m.len()).unwrap_or(0)
+                        );
                         
                         let create_response = resource.create(&req, json_payload).await;
                         handle_create_response(create_response, &resource.base_path(), &resource_name)
@@ -484,7 +487,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         info!("✅ Update form submitted by: {} for resource: {} item: {}", claims.email, resource_name, item_id);
                         
                         let json_payload = convert_form_data_to_json(form_data.into_inner());
-                        tracing::debug!("Converted form data to JSON: {:?}", json_payload);
+                        tracing::debug!(
+                            "Parsed form data: {} field(s)",
+                            json_payload.as_object().map(|m| m.len()).unwrap_or(0)
+                        );
                         
                         let update_response = resource.update(&req, item_id.clone(), json_payload).await;
                         handle_update_response(update_response, &resource.base_path(), &item_id, &resource_name)

@@ -126,10 +126,9 @@ where
                     claims.email, uri, user_roles, allowed_roles
                 );
 
-                return Err(actix_web::error::ErrorForbidden(format!(
-                    "Access denied. Required roles: {:?}, User roles: {:?}",
-                    allowed_roles, user_roles
-                )));
+                // Don't disclose required/held role names to the client; the detail
+                // is already in the server-side warn! log above.
+                return Err(actix_web::error::ErrorForbidden("Access denied"));
             }
         })
     }
