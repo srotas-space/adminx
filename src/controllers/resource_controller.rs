@@ -148,7 +148,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         ctx.insert("has_active_filters", &(!current_filters.is_empty()));
                         
                         // Fetch actual data from the resource (with filters applied)
-                        match fetch_list_data(&resource, &req, query_string).await {
+                        let roles = {
+                            let mut r = claims.roles.clone();
+                            r.push(claims.role.clone());
+                            r
+                        };
+                        match fetch_list_data(&resource, &req, query_string, &roles).await {
                             Ok((headers, rows, pagination)) => {
                                 ctx.insert("headers", &headers);
                                 ctx.insert("rows", &rows);
@@ -250,7 +255,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         }
                         
                         // Fetch the actual record data
-                        match fetch_single_item_data(&resource, &req, &item_id).await {
+                        let roles = {
+                            let mut r = claims.roles.clone();
+                            r.push(claims.role.clone());
+                            r
+                        };
+                        match fetch_single_item_data(&resource, &req, &item_id, &roles).await {
                             Ok(record) => {
                                 let view_structure = resource.view_structure()
                                     .unwrap_or_else(|| get_default_view_structure());
@@ -300,7 +310,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         
                         // Fetch the actual record data for editing
                         let req = actix_web::test::TestRequest::get().to_http_request();
-                        match fetch_single_item_data(&resource, &req, &item_id).await {
+                        let roles = {
+                            let mut r = claims.roles.clone();
+                            r.push(claims.role.clone());
+                            r
+                        };
+                        match fetch_single_item_data(&resource, &req, &item_id, &roles).await {
                             Ok(record) => {
                                 let form = resource.form_structure()
                                     .unwrap_or_else(|| get_default_form_structure());

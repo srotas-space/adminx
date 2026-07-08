@@ -279,6 +279,7 @@ pub async fn fetch_list_data(
     resource: &Arc<Box<dyn AdmixResource>>,
     req: &HttpRequest,
     _query_string: String,
+    roles: &[String],
 ) -> Result<(Vec<String>, Vec<serde_json::Map<String, Value>>, Value), Box<dyn std::error::Error + Send + Sync>> {
     let collection = resource.get_collection();
     
@@ -472,7 +473,20 @@ pub async fn fetch_list_data(
             default_cols.push("created_at".to_string());
             default_cols
         });
-    
+
+    // Enforce per-role field visibility: if the resource restricts fields for the
+    // caller's roles, drop any column outside that set (keep "id" for row links).
+    let visible = resource.visible_fields_for_role(roles);
+    let columns: Vec<String> = if visible.is_empty() {
+        columns
+    } else {
+        let allow: HashSet<&str> = visible.iter().map(|s| s.as_str()).collect();
+        columns
+            .into_iter()
+            .filter(|c| c == "id" || allow.contains(c.as_str()))
+            .collect()
+    };
+
     // Convert MongoDB documents to the format expected by the template
     let rows: Vec<serde_json::Map<String, Value>> = documents
         .into_iter()
@@ -639,6 +653,7 @@ pub async fn fetch_single_item_data(
     resource: &Arc<Box<dyn AdmixResource>>,
     _req: &HttpRequest,
     id: &str,
+    roles: &[String],
 ) -> Result<serde_json::Map<String, Value>, Box<dyn std::error::Error + Send + Sync>> {
     let collection = resource.get_collection();
     
@@ -661,8 +676,17 @@ pub async fn fetch_single_item_data(
     
     // Get all permitted fields from the resource and extract them from the document
     let permitted_fields = resource.permit_keys();
-    
+
+    // Enforce per-role field visibility: when the resource restricts fields for the
+    // caller's roles, skip any field outside that set so it never reaches the page.
+    let visible = resource.visible_fields_for_role(roles);
+    let restrict = !visible.is_empty();
+    let allow: HashSet<&str> = visible.iter().map(|s| s.as_str()).collect();
+
     for field_name in permitted_fields {
+        if restrict && !allow.contains(field_name) {
+            continue;
+        }
         // Try different data types for each field
         if let Ok(string_val) = doc.get_str(field_name) {
             record.insert(field_name.to_string(), Value::String(string_val.to_string()));
