@@ -736,7 +736,7 @@ The roadmap includes phases like core CRUD foundation, extended resource feature
 ---
 
 
-Made with ❤️ by the [Srotas Space] (https://srotas.space/open-source)
+Made with ❤️ by the [Srotas Space] (https://open-source.srotas.space)
 
 ---
 

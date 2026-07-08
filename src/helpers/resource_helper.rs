@@ -312,11 +312,14 @@ pub async fn fetch_list_data(
                         let search_fields = vec!["name", "email", "username", "key", "title", "description"];
                         let mut search_conditions = Vec::new();
                         
+                        // Escape the user input so it is matched literally: an
+                        // unescaped value is a raw regex → ReDoS and match injection.
+                        let escaped = regex::escape(value.as_str());
                         for field in search_fields {
                             if permitted_fields.contains(field) {
                                 search_conditions.push(mongodb::bson::doc! {
                                     field: {
-                                        "$regex": value,
+                                        "$regex": &escaped,
                                         "$options": "i"
                                     }
                                 });
@@ -328,7 +331,7 @@ pub async fn fetch_list_data(
                         }
                     } else {
                         filter_doc.insert(key, mongodb::bson::doc! {
-                            "$regex": value,
+                            "$regex": regex::escape(value.as_str()),
                             "$options": "i"
                         });
                     }

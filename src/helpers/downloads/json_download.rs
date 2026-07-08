@@ -50,23 +50,25 @@ pub async fn export_data_as_json(
                         let search_fields = vec!["name", "email", "username", "key", "title", "description"];
                         let mut search_conditions = Vec::new();
                         
+                        // Escape user input so it is matched literally (avoids ReDoS/injection).
+                        let escaped = regex::escape(value.as_str());
                         for field in search_fields {
                             if permitted_fields.contains(field) {
                                 search_conditions.push(mongodb::bson::doc! {
                                     field: {
-                                        "$regex": value,
+                                        "$regex": &escaped,
                                         "$options": "i"
                                     }
                                 });
                             }
                         }
-                        
+
                         if !search_conditions.is_empty() {
                             filter_doc.insert("$or", search_conditions);
                         }
                     } else {
                         filter_doc.insert(key, mongodb::bson::doc! {
-                            "$regex": value,
+                            "$regex": regex::escape(value.as_str()),
                             "$options": "i"
                         });
                     }
