@@ -447,10 +447,12 @@ pub async fn fetch_list_data(
         .map_err(|e| format!("Database query failed: {}", e))?;
     
     let mut documents = Vec::new();
-    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
+    while let Some(doc) = cursor.try_next().await
+        .map_err(|e| format!("Cursor error while reading results: {}", e))?
+    {
         documents.push(doc);
     }
-    
+
     // Get column structure from resource's list_structure or use defaults
     let list_structure = resource.list_structure().unwrap_or_else(|| get_default_list_structure());
     let columns = list_structure.get("columns")

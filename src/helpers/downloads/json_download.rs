@@ -113,7 +113,9 @@ pub async fn export_data_as_json(
         .map_err(|e| format!("Database query failed: {}", e))?;
     
     let mut documents = Vec::new();
-    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
+    while let Some(doc) = cursor.try_next().await
+        .map_err(|e| format!("Cursor error while reading results: {}", e))?
+    {
         // Convert MongoDB document to JSON-friendly format
         let mut json_doc = serde_json::Map::new();
         

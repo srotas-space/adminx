@@ -124,7 +124,9 @@ pub async fn export_data_as_csv(
     let mut csv_content = headers.join(",") + "\n";
     
     let mut record_count = 0;
-    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
+    while let Some(doc) = cursor.try_next().await
+        .map_err(|e| format!("Cursor error while reading results: {}", e))?
+    {
         let mut row = Vec::new();
         
         // Add ID

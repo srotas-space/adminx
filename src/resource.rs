@@ -369,11 +369,18 @@ pub trait AdmixResource: Send + Sync {
             match collection.find(opts.filter, find_options).await {
                 Ok(mut cursor) => {
                     let mut documents = Vec::new();
-                    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
-                        documents.push(doc);
+                    loop {
+                        match cursor.try_next().await {
+                            Ok(Some(doc)) => documents.push(doc),
+                            Ok(None) => break,
+                            Err(e) => {
+                                tracing::error!("Cursor error while listing {}: {}", resource_name, e);
+                                return AdminxError::InternalError.error_response();
+                            }
+                        }
                     }
 
-                    tracing::info!("Found {} documents for {} out of {} total", 
+                    tracing::info!("Found {} documents for {} out of {} total",
                                  documents.len(), resource_name, total);
                     
                     let limit = opts.limit.max(1); // guard against divide-by-zero
