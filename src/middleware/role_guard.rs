@@ -219,11 +219,28 @@ fn check_optional_basic_auth(
 
     let (user, pass) = (parts[0], parts[1]);
 
-    if user == cfg.username && pass == cfg.password {
+    // Constant-time comparison so credentials can't be recovered via response timing.
+    // `&` (not `&&`) checks both without short-circuiting between user and pass.
+    let ok = ct_eq(user.as_bytes(), cfg.username.as_bytes())
+        & ct_eq(pass.as_bytes(), cfg.password.as_bytes());
+    if ok {
         Ok(())
     } else {
         Err("Invalid Basic auth credentials")
     }
+}
+
+/// Constant-time byte comparison (given equal length). Leaks length but not
+/// content — adequate for credential checks without adding a crypto dependency.
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
 }
 
 

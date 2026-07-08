@@ -82,14 +82,20 @@ impl AdminxConfig {
                 .unwrap_or(86400),
         );
 
-        Ok(Self {
+        let config = Self {
             jwt_secret,
             basic_auth,
             session_secret,
             environment,
             log_level,
             session_timeout,
-        })
+        };
+
+        // Fail fast on a weak JWT/session secret instead of silently accepting a
+        // brute-forceable HS256 key.
+        crate::utils::auth::validate_session_config(&config)?;
+
+        Ok(config)
     }
     
     pub fn is_production(&self) -> bool {
