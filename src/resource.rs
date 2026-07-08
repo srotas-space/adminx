@@ -113,16 +113,22 @@ pub trait AdmixResource: Send + Sync {
         // Extract everything we need BEFORE the async block
         let collection = self.get_collection();
         let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
+        let readonly = self.readonly_keys().into_iter().collect::<std::collections::HashSet<_>>();
         let resource_name = self.resource_name().to_string();
-        
+
         Box::pin(async move {
             // Now _req is not captured in this async block
-            tracing::info!("Default create implementation for resource: {} with payload: {:?}", resource_name, payload);
-            
+            tracing::info!("Default create implementation for resource: {}", resource_name);
+
             let mut clean_map = serde_json::Map::new();
             if let Value::Object(map) = payload {
                 for (key, value) in map {
-                    if permitted.contains(key.as_str()) {
+                    // Deny-list wins over the permit-list, and _id is never client-settable,
+                    // so a permissive permit_keys can't be used for mass-assignment.
+                    if permitted.contains(key.as_str())
+                        && !readonly.contains(key.as_str())
+                        && key != "_id"
+                    {
                         clean_map.insert(key, value);
                     }
                 }
@@ -167,19 +173,23 @@ pub trait AdmixResource: Send + Sync {
         // Extract everything we need BEFORE the async block
         let collection = self.get_collection();
         let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
+        let readonly = self.readonly_keys().into_iter().collect::<std::collections::HashSet<_>>();
         let resource_name = self.resource_name().to_string();
-        
+
         Box::pin(async move {
             // Now _req is not captured in this async block
-            tracing::info!("Default update implementation for resource: {} with id: {} and payload: {:?}", 
-                         resource_name, id, payload);
-            
+            tracing::info!("Default update implementation for resource: {} with id: {}", resource_name, id);
+
             match ObjectId::parse_str(&id) {
                 Ok(oid) => {
                     let mut clean_map = serde_json::Map::new();
                     if let Value::Object(map) = payload {
                         for (key, value) in map {
-                            if permitted.contains(key.as_str()) {
+                            // Deny-list wins over permit-list; _id is never client-settable.
+                            if permitted.contains(key.as_str())
+                                && !readonly.contains(key.as_str())
+                                && key != "_id"
+                            {
                                 clean_map.insert(key, value);
                             }
                         }
