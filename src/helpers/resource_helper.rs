@@ -292,7 +292,9 @@ pub async fn fetch_list_data(
     let per_page: u64 = query_params.get("per_page")
         .and_then(|p| p.parse().ok())
         .unwrap_or(10);
-    
+
+    // Clamp to safe bounds so page=0 can't underflow and per_page can't be 0 or huge.
+    let (page, per_page) = crate::pagination::clamp_pagination(page, per_page);
     let skip = (page - 1) * per_page;
     
     // Build filter document from query parameters

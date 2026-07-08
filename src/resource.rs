@@ -366,11 +366,12 @@ pub trait AdmixResource: Send + Sync {
                     tracing::info!("Found {} documents for {} out of {} total", 
                                  documents.len(), resource_name, total);
                     
+                    let limit = opts.limit.max(1); // guard against divide-by-zero
                     HttpResponse::Ok().json(PaginatedResponse {
                         data: documents,
                         total,
-                        page: (opts.skip / opts.limit) + 1,
-                        per_page: opts.limit,
+                        page: (opts.skip / limit) + 1,
+                        per_page: limit,
                     })
                 }
                 Err(e) => {

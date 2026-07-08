@@ -33,6 +33,8 @@ pub fn parse_query(query: &str) -> FilterOptions {
         }
     }
 
+    // Clamp to safe bounds so page=0 can't underflow and per_page can't be 0 or huge.
+    let (page, per_page) = crate::pagination::clamp_pagination(page, per_page);
     let skip = (page - 1) * per_page;
 
     FilterOptions {

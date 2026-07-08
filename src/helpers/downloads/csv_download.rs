@@ -31,7 +31,10 @@ pub async fn export_data_as_csv(
     let per_page = query_params.get("per_page")
         .and_then(|p| p.parse::<u64>().ok())
         .unwrap_or(DEFAULT_PER_PAGE);
-    
+
+    // Clamp to safe bounds (page>=1, 1<=per_page<=MAX) to avoid underflow/DoS.
+    let (page, per_page) = crate::pagination::clamp_pagination(page, per_page);
+
     let complete_export = query_params.get("complete")
         .map(|v| v == "true")
         .unwrap_or(false);
