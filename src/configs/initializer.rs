@@ -82,14 +82,20 @@ impl AdminxConfig {
                 .unwrap_or(86400),
         );
 
-        Ok(Self {
+        let config = Self {
             jwt_secret,
             basic_auth,
             session_secret,
             environment,
             log_level,
             session_timeout,
-        })
+        };
+
+        // Fail fast on a weak JWT/session secret instead of silently accepting a
+        // brute-forceable HS256 key.
+        crate::utils::auth::validate_session_config(&config)?;
+
+        Ok(config)
     }
     
     pub fn is_production(&self) -> bool {
@@ -115,22 +121,27 @@ fn load_session_key(config: &AdminxConfig) -> Key {
 
 fn create_session_middleware(config: &AdminxConfig) -> SessionMiddleware<CookieSessionStore> {
     let secret_key = load_session_key(config);
-    
+
     // Convert std::time::Duration to actix_web::cookie::time::Duration
     let session_ttl = actix_web::cookie::time::Duration::seconds(config.session_timeout.as_secs() as i64);
-    
+
+    // Secure by default (so a deployment that forgets ENVIRONMENT=production is still
+    // safe); opt out only for local HTTP development via ADMINX_INSECURE_COOKIE.
+    let allow_insecure_cookie = env::var("ADMINX_INSECURE_COOKIE")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
     SessionMiddleware::builder(
         CookieSessionStore::default(),
         secret_key
     )
     .cookie_name("adminx_session".to_string())
-    .cookie_secure(config.is_production())
+    .cookie_secure(!allow_insecure_cookie)
     .cookie_http_only(true)
-    .cookie_same_site(if config.is_production() { 
-        SameSite::Strict 
-    } else { 
-        SameSite::Lax 
-    })
+    // SameSite=Strict unconditionally: the browser will not attach the session
+    // cookie to any cross-site request, which blocks classic CSRF on the
+    // state-changing POST endpoints regardless of the ENVIRONMENT setting.
+    .cookie_same_site(SameSite::Strict)
     .session_lifecycle(
         PersistentSession::default()
             .session_ttl(session_ttl)

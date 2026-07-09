@@ -10,7 +10,7 @@ use crate::{custom_error_expression};
 use serde::{Serialize, Deserialize};
 use actix_session::Session;
 use actix_web::{Error, web};
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use crate::{
     utils::{
         database::{
@@ -35,10 +35,13 @@ pub async fn extract_claims_from_session(
         .map_err(|_| actix_web::error::ErrorUnauthorized("Invalid session"))?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing token in session"))?;
     
+    // Pin the algorithm to HS256 explicitly (don't rely on the Validation default)
+    // so a token presenting a different `alg` can never be accepted. `exp` is
+    // validated by default.
     let token_data = decode::<Claims>(
         &token,
         &DecodingKey::from_secret(config.jwt_secret.as_bytes()),
-        &Validation::default(),
+        &Validation::new(Algorithm::HS256),
     )
     .map_err(|_| actix_web::error::ErrorUnauthorized("Invalid token"))?;
     

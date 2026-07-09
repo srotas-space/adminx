@@ -310,7 +310,6 @@ dependencies = [
  "serde_urlencoded",
  "tempfile",
  "tera",
- "thiserror 1.0.69",
  "tokio",
  "tracing",
  "urlencoding",

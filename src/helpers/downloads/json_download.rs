@@ -30,7 +30,10 @@ pub async fn export_data_as_json(
     let per_page = query_params.get("per_page")
         .and_then(|p| p.parse::<u64>().ok())
         .unwrap_or(DEFAULT_PER_PAGE);
-    
+
+    // Clamp to safe bounds (page>=1, 1<=per_page<=MAX) to avoid underflow/DoS.
+    let (page, per_page) = crate::pagination::clamp_pagination(page, per_page);
+
     let complete_export = query_params.get("complete")
         .map(|v| v == "true")
         .unwrap_or(false);
@@ -50,23 +53,25 @@ pub async fn export_data_as_json(
                         let search_fields = vec!["name", "email", "username", "key", "title", "description"];
                         let mut search_conditions = Vec::new();
                         
+                        // Escape user input so it is matched literally (avoids ReDoS/injection).
+                        let escaped = regex::escape(value.as_str());
                         for field in search_fields {
                             if permitted_fields.contains(field) {
                                 search_conditions.push(mongodb::bson::doc! {
                                     field: {
-                                        "$regex": value,
+                                        "$regex": &escaped,
                                         "$options": "i"
                                     }
                                 });
                             }
                         }
-                        
+
                         if !search_conditions.is_empty() {
                             filter_doc.insert("$or", search_conditions);
                         }
                     } else {
                         filter_doc.insert(key, mongodb::bson::doc! {
-                            "$regex": value,
+                            "$regex": regex::escape(value.as_str()),
                             "$options": "i"
                         });
                     }
@@ -108,7 +113,9 @@ pub async fn export_data_as_json(
         .map_err(|e| format!("Database query failed: {}", e))?;
     
     let mut documents = Vec::new();
-    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
+    while let Some(doc) = cursor.try_next().await
+        .map_err(|e| format!("Cursor error while reading results: {}", e))?
+    {
         // Convert MongoDB document to JSON-friendly format
         let mut json_doc = serde_json::Map::new();
         

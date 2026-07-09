@@ -86,7 +86,6 @@ hex = "0.4"
 urlencoding = "2.1.3"
 
 # Error Handling
-thiserror = "1"
 anyhow = "1.0"
 derive_more = "0.99"
 
@@ -109,15 +108,11 @@ serde_test = "1"
 
 [features]
 default = ["templates", "auth", "rbac"]
-# Core Features
+# Core capabilities. These are currently always compiled in (no code is gated
+# on them yet); they are kept as stable feature names for forward compatibility.
 templates = []
 auth = []
 rbac = []
-# Future Database Support
-postgres = []
-sqlite = []
-# Additional Features
-redis = []
 file-upload = []
 full = ["templates", "auth", "rbac", "file-upload"]
 

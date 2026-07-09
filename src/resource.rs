@@ -113,16 +113,22 @@ pub trait AdmixResource: Send + Sync {
         // Extract everything we need BEFORE the async block
         let collection = self.get_collection();
         let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
+        let readonly = self.readonly_keys().into_iter().collect::<std::collections::HashSet<_>>();
         let resource_name = self.resource_name().to_string();
-        
+
         Box::pin(async move {
             // Now _req is not captured in this async block
-            tracing::info!("Default create implementation for resource: {} with payload: {:?}", resource_name, payload);
-            
+            tracing::info!("Default create implementation for resource: {}", resource_name);
+
             let mut clean_map = serde_json::Map::new();
             if let Value::Object(map) = payload {
                 for (key, value) in map {
-                    if permitted.contains(key.as_str()) {
+                    // Deny-list wins over the permit-list, and _id is never client-settable,
+                    // so a permissive permit_keys can't be used for mass-assignment.
+                    if permitted.contains(key.as_str())
+                        && !readonly.contains(key.as_str())
+                        && key != "_id"
+                    {
                         clean_map.insert(key, value);
                     }
                 }
@@ -136,7 +142,7 @@ pub trait AdmixResource: Send + Sync {
                 clean_map.insert("deleted".to_string(), json!(false));
             }
 
-            tracing::debug!("Cleaned payload for {}: {:?}", resource_name, clean_map);
+            tracing::debug!("Create for {}: {} field(s) after filtering", resource_name, clean_map.len());
 
             match mongodb::bson::to_document(&Value::Object(clean_map)) {
                 Ok(document) => {
@@ -167,19 +173,23 @@ pub trait AdmixResource: Send + Sync {
         // Extract everything we need BEFORE the async block
         let collection = self.get_collection();
         let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
+        let readonly = self.readonly_keys().into_iter().collect::<std::collections::HashSet<_>>();
         let resource_name = self.resource_name().to_string();
-        
+
         Box::pin(async move {
             // Now _req is not captured in this async block
-            tracing::info!("Default update implementation for resource: {} with id: {} and payload: {:?}", 
-                         resource_name, id, payload);
-            
+            tracing::info!("Default update implementation for resource: {} with id: {}", resource_name, id);
+
             match ObjectId::parse_str(&id) {
                 Ok(oid) => {
                     let mut clean_map = serde_json::Map::new();
                     if let Value::Object(map) = payload {
                         for (key, value) in map {
-                            if permitted.contains(key.as_str()) {
+                            // Deny-list wins over permit-list; _id is never client-settable.
+                            if permitted.contains(key.as_str())
+                                && !readonly.contains(key.as_str())
+                                && key != "_id"
+                            {
                                 clean_map.insert(key, value);
                             }
                         }
@@ -359,18 +369,26 @@ pub trait AdmixResource: Send + Sync {
             match collection.find(opts.filter, find_options).await {
                 Ok(mut cursor) => {
                     let mut documents = Vec::new();
-                    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
-                        documents.push(doc);
+                    loop {
+                        match cursor.try_next().await {
+                            Ok(Some(doc)) => documents.push(doc),
+                            Ok(None) => break,
+                            Err(e) => {
+                                tracing::error!("Cursor error while listing {}: {}", resource_name, e);
+                                return AdminxError::InternalError.error_response();
+                            }
+                        }
                     }
 
-                    tracing::info!("Found {} documents for {} out of {} total", 
+                    tracing::info!("Found {} documents for {} out of {} total",
                                  documents.len(), resource_name, total);
                     
+                    let limit = opts.limit.max(1); // guard against divide-by-zero
                     HttpResponse::Ok().json(PaginatedResponse {
                         data: documents,
                         total,
-                        page: (opts.skip / opts.limit) + 1,
-                        per_page: opts.limit,
+                        page: (opts.skip / limit) + 1,
+                        per_page: limit,
                     })
                 }
                 Err(e) => {
@@ -413,120 +431,6 @@ pub trait AdmixResource: Send + Sync {
         })
     }
 
-    // /// Enhanced create method that can handle both regular form data and file uploads
-    // fn create(&self, _req: &HttpRequest, payload: Value) -> BoxFuture<'static, HttpResponse> {
-    //     let collection = self.get_collection();
-    //     let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
-    //     let resource_name = self.resource_name().to_string();
-        
-    //     Box::pin(async move {
-    //         tracing::info!("Default create implementation for resource: {} with payload: {:?}", resource_name, payload);
-            
-    //         let mut clean_map = serde_json::Map::new();
-    //         if let Value::Object(map) = payload {
-    //             for (key, value) in map {
-    //                 if permitted.contains(key.as_str()) {
-    //                     clean_map.insert(key, value);
-    //                 }
-    //             }
-    //         }
-
-    //         let now = mongodb::bson::DateTime::now();
-    //         clean_map.insert("created_at".to_string(), json!(now));
-    //         clean_map.insert("updated_at".to_string(), json!(now));
-
-    //         // Add default values for file upload resources
-    //         if permitted.contains("deleted") && !clean_map.contains_key("deleted") {
-    //             clean_map.insert("deleted".to_string(), json!(false));
-    //         }
-
-    //         tracing::debug!("Cleaned payload for {}: {:?}", resource_name, clean_map);
-
-    //         match mongodb::bson::to_document(&Value::Object(clean_map)) {
-    //             Ok(document) => {
-    //                 match collection.insert_one(document, None).await {
-    //                     Ok(insert_result) => {
-    //                         tracing::info!("Document created successfully for {}: {:?}", resource_name, insert_result.inserted_id);
-    //                         HttpResponse::Created().json(json!({
-    //                             "success": true,
-    //                             "message": format!("{} created successfully", resource_name),
-    //                             "id": insert_result.inserted_id
-    //                         }))
-    //                     },
-    //                     Err(e) => {
-    //                         tracing::error!("Error inserting document for {}: {}", resource_name, e);
-    //                         AdminxError::InternalError.error_response()
-    //                     }
-    //                 }
-    //             },
-    //             Err(e) => {
-    //                 tracing::error!("Error converting payload to BSON for {}: {}", resource_name, e);
-    //                 AdminxError::BadRequest("Invalid input data".into()).error_response()
-    //             }
-    //         }
-    //     })
-    // }
-
-    // /// Enhanced update method with soft delete support
-    // fn update(&self, _req: &HttpRequest, id: String, payload: Value) -> BoxFuture<'static, HttpResponse> {
-    //     let collection = self.get_collection();
-    //     let permitted = self.permit_keys().into_iter().collect::<std::collections::HashSet<_>>();
-    //     let resource_name = self.resource_name().to_string();
-        
-    //     Box::pin(async move {
-    //         tracing::info!("Default update implementation for resource: {} with id: {} and payload: {:?}", 
-    //                      resource_name, id, payload);
-            
-    //         match ObjectId::parse_str(&id) {
-    //             Ok(oid) => {
-    //                 let mut clean_map = serde_json::Map::new();
-    //                 if let Value::Object(map) = payload {
-    //                     for (key, value) in map {
-    //                         if permitted.contains(key.as_str()) {
-    //                             clean_map.insert(key, value);
-    //                         }
-    //                     }
-    //                 }
-
-    //                 clean_map.insert("updated_at".to_string(), json!(mongodb::bson::DateTime::now()));
-
-    //                 let bson_payload: Document = match mongodb::bson::to_document(&Value::Object(clean_map)) {
-    //                     Ok(doc) => doc,
-    //                     Err(e) => {
-    //                         tracing::error!("Error converting payload to BSON for {}: {}", resource_name, e);
-    //                         return AdminxError::BadRequest("Invalid payload format".into()).error_response();
-    //                     }
-    //                 };
-
-    //                 let update_doc = doc! { "$set": bson_payload };
-
-    //                 match collection.update_one(doc! { "_id": oid }, update_doc, None).await {
-    //                     Ok(result) => {
-    //                         if result.modified_count > 0 {
-    //                             tracing::info!("Document {} updated successfully for {}", id, resource_name);
-    //                             HttpResponse::Ok().json(json!({
-    //                                 "success": true,
-    //                                 "message": format!("{} updated successfully", resource_name),
-    //                                 "modified_count": result.modified_count
-    //                             }))
-    //                         } else {
-    //                             tracing::warn!("No document found to update with id: {} for {}", id, resource_name);
-    //                             AdminxError::NotFound.error_response()
-    //                         }
-    //                     },
-    //                     Err(e) => {
-    //                         tracing::error!("Error updating document {} for {}: {}", id, resource_name, e);
-    //                         AdminxError::InternalError.error_response()
-    //                     }
-    //                 }
-    //             }
-    //             Err(e) => {
-    //                 tracing::error!("Invalid ObjectId {} for {}: {}", id, resource_name, e);
-    //                 AdminxError::BadRequest("Invalid ID format".into()).error_response()
-    //             }
-    //         }
-    //     })
-    // }
 
     /// Enhanced delete with soft delete support
     fn delete(&self, _req: &HttpRequest, id: String) -> BoxFuture<'static, HttpResponse> {

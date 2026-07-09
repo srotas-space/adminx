@@ -35,7 +35,10 @@ pub static ADMINX_TEMPLATES: Lazy<Arc<Tera>> = Lazy::new(|| {
             .unwrap_or_else(|e| panic!("Failed to add {}: {}", name, e));
     }
 
-    tera.autoescape_on(vec![]); // Disable autoescaping if rendering raw HTML
+    // Autoescape all HTML templates so user-controlled record data (names, emails,
+    // descriptions, filenames, filter values) can't inject markup/script into the
+    // admin panel. Template names end in ".html.tera", so escape on that suffix.
+    tera.autoescape_on(vec![".html.tera"]);
     Arc::new(tera)
 });
 

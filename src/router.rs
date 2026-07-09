@@ -95,9 +95,12 @@ pub fn register_all_admix_routes() -> Scope {
     scope
 }
 
-// Alternative version without middleware (for testing)
+// Alternative version WITHOUT authentication middleware — for local testing only.
+// Gated to debug builds so it cannot be compiled into (and accidentally shipped in)
+// a release binary, where it would expose the entire admin surface unauthenticated.
+#[cfg(debug_assertions)]
 pub fn register_all_admix_routes_debug() -> Scope {
-    info!("🔧 Starting AdminX route registration (DEBUG MODE - NO AUTH)...");
+    warn!("🔧 AdminX route registration in DEBUG MODE - NO AUTH. Never use this in production.");
     
     let mut scope = web::scope("/adminx")
         // ===========================

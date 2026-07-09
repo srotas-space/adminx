@@ -148,7 +148,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         ctx.insert("has_active_filters", &(!current_filters.is_empty()));
                         
                         // Fetch actual data from the resource (with filters applied)
-                        match fetch_list_data(&resource, &req, query_string).await {
+                        let roles = {
+                            let mut r = claims.roles.clone();
+                            r.push(claims.role.clone());
+                            r
+                        };
+                        match fetch_list_data(&resource, &req, query_string, &roles).await {
                             Ok((headers, rows, pagination)) => {
                                 ctx.insert("headers", &headers);
                                 ctx.insert("rows", &rows);
@@ -250,7 +255,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         }
                         
                         // Fetch the actual record data
-                        match fetch_single_item_data(&resource, &req, &item_id).await {
+                        let roles = {
+                            let mut r = claims.roles.clone();
+                            r.push(claims.role.clone());
+                            r
+                        };
+                        match fetch_single_item_data(&resource, &req, &item_id, &roles).await {
                             Ok(record) => {
                                 let view_structure = resource.view_structure()
                                     .unwrap_or_else(|| get_default_view_structure());
@@ -300,7 +310,12 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         
                         // Fetch the actual record data for editing
                         let req = actix_web::test::TestRequest::get().to_http_request();
-                        match fetch_single_item_data(&resource, &req, &item_id).await {
+                        let roles = {
+                            let mut r = claims.roles.clone();
+                            r.push(claims.role.clone());
+                            r
+                        };
+                        match fetch_single_item_data(&resource, &req, &item_id, &roles).await {
                             Ok(record) => {
                                 let form = resource.form_structure()
                                     .unwrap_or_else(|| get_default_form_structure());
@@ -344,7 +359,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         info!("✅ Create form submitted by: {} for resource: {}", claims.email, resource_name);
                         
                         let json_payload = convert_form_data_to_json(form_data.into_inner());
-                        tracing::debug!("Converted form data to JSON: {:?}", json_payload);
+                        tracing::debug!(
+                            "Parsed form data: {} field(s)",
+                            json_payload.as_object().map(|m| m.len()).unwrap_or(0)
+                        );
                         
                         let create_response = resource.create(&req, json_payload).await;
                         handle_create_response(create_response, &resource.base_path(), &resource_name)
@@ -372,7 +390,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         let mut form_data = HashMap::new();
                         let mut files = HashMap::new();
                         
-                        while let Some(mut field) = payload.try_next().await.unwrap_or(None) {
+                        while let Some(mut field) = match payload.try_next().await {
+                            Ok(opt) => opt,
+                            Err(e) => return HttpResponse::BadRequest().body(format!("Malformed multipart data: {}", e)),
+                        } {
                             let name = field.name().unwrap_or("").to_string();
                             
                             // Extract filename first and clone it to avoid borrow issues
@@ -382,7 +403,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                                 .map(|f| f.to_string()); // Convert to owned String
                             
                             let mut data = Vec::new();
-                            while let Some(chunk) = field.try_next().await.unwrap_or(None) {
+                            while let Some(chunk) = match field.try_next().await {
+                                Ok(opt) => opt,
+                                Err(e) => return HttpResponse::BadRequest().body(format!("Error reading upload: {}", e)),
+                            } {
                                 data.extend_from_slice(&chunk);
                             }
                             
@@ -423,7 +447,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         let mut form_data = HashMap::new();
                         let mut files = HashMap::new();
                         
-                        while let Some(mut field) = payload.try_next().await.unwrap_or(None) {
+                        while let Some(mut field) = match payload.try_next().await {
+                            Ok(opt) => opt,
+                            Err(e) => return HttpResponse::BadRequest().body(format!("Malformed multipart data: {}", e)),
+                        } {
                             let name = field.name().unwrap_or("").to_string();
                             
                             let filename = field
@@ -432,7 +459,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                                 .map(|f| f.to_string());
                             
                             let mut data = Vec::new();
-                            while let Some(chunk) = field.try_next().await.unwrap_or(None) {
+                            while let Some(chunk) = match field.try_next().await {
+                                Ok(opt) => opt,
+                                Err(e) => return HttpResponse::BadRequest().body(format!("Error reading upload: {}", e)),
+                            } {
                                 data.extend_from_slice(&chunk);
                             }
                             
@@ -469,7 +499,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         info!("✅ Update form submitted by: {} for resource: {} item: {}", claims.email, resource_name, item_id);
                         
                         let json_payload = convert_form_data_to_json(form_data.into_inner());
-                        tracing::debug!("Converted form data to JSON: {:?}", json_payload);
+                        tracing::debug!(
+                            "Parsed form data: {} field(s)",
+                            json_payload.as_object().map(|m| m.len()).unwrap_or(0)
+                        );
                         
                         let update_response = resource.update(&req, item_id.clone(), json_payload).await;
                         handle_update_response(update_response, &resource.base_path(), &item_id, &resource_name)

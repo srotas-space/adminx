@@ -100,8 +100,14 @@ pub fn create_jwt_token_with_expiration(
     Ok(token)
 }
 
-// Validate JWT token structure (without signature verification)
-pub fn validate_token_structure(token: &str) -> Result<Claims> {
+// Decode a token's claims WITHOUT verifying its signature.
+//
+// This is intentionally NOT public and is gated to test builds: it must never
+// be used for authentication/authorization, since the claims it returns are
+// fully attacker-controllable. Real auth goes through
+// `auth::extract_claims_from_session`, which verifies the signature.
+#[cfg(test)]
+fn validate_token_structure(token: &str) -> Result<Claims> {
     use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
     
     // This is just for structure validation - we use a dummy key

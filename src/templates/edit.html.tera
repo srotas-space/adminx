@@ -321,7 +321,7 @@
                               rows="12"
                               class="editor-textarea block w-full px-4 py-3 text-base border-0 focus:ring-0 resize-y font-mono dark:bg-gray-700 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                               placeholder="{&#10;  &quot;name&quot;: &quot;example&quot;,&#10;  &quot;version&quot;: &quot;1.0.0&quot;,&#10;  &quot;config&quot;: {&#10;    &quot;enabled&quot;: true,&#10;    &quot;options&quot;: [&quot;option1&quot;, &quot;option2&quot;]&#10;  }&#10;}"
-                              {% if field.required %}required{% endif %}>{{ record[field.name] | safe }}</textarea>
+                              {% if field.required %}required{% endif %}>{{ record[field.name] }}</textarea>
                     <div id="{{ field.name }}_json_status" class="status-indicator absolute bottom-3 right-3 text-xs px-2 py-1 rounded hidden"></div>
                   </div>
                 </div>

@@ -279,6 +279,7 @@ pub async fn fetch_list_data(
     resource: &Arc<Box<dyn AdmixResource>>,
     req: &HttpRequest,
     _query_string: String,
+    roles: &[String],
 ) -> Result<(Vec<String>, Vec<serde_json::Map<String, Value>>, Value), Box<dyn std::error::Error + Send + Sync>> {
     let collection = resource.get_collection();
     
@@ -292,7 +293,9 @@ pub async fn fetch_list_data(
     let per_page: u64 = query_params.get("per_page")
         .and_then(|p| p.parse().ok())
         .unwrap_or(10);
-    
+
+    // Clamp to safe bounds so page=0 can't underflow and per_page can't be 0 or huge.
+    let (page, per_page) = crate::pagination::clamp_pagination(page, per_page);
     let skip = (page - 1) * per_page;
     
     // Build filter document from query parameters
@@ -312,11 +315,14 @@ pub async fn fetch_list_data(
                         let search_fields = vec!["name", "email", "username", "key", "title", "description"];
                         let mut search_conditions = Vec::new();
                         
+                        // Escape the user input so it is matched literally: an
+                        // unescaped value is a raw regex → ReDoS and match injection.
+                        let escaped = regex::escape(value.as_str());
                         for field in search_fields {
                             if permitted_fields.contains(field) {
                                 search_conditions.push(mongodb::bson::doc! {
                                     field: {
-                                        "$regex": value,
+                                        "$regex": &escaped,
                                         "$options": "i"
                                     }
                                 });
@@ -328,7 +334,7 @@ pub async fn fetch_list_data(
                         }
                     } else {
                         filter_doc.insert(key, mongodb::bson::doc! {
-                            "$regex": value,
+                            "$regex": regex::escape(value.as_str()),
                             "$options": "i"
                         });
                     }
@@ -441,10 +447,12 @@ pub async fn fetch_list_data(
         .map_err(|e| format!("Database query failed: {}", e))?;
     
     let mut documents = Vec::new();
-    while let Some(doc) = cursor.try_next().await.unwrap_or(None) {
+    while let Some(doc) = cursor.try_next().await
+        .map_err(|e| format!("Cursor error while reading results: {}", e))?
+    {
         documents.push(doc);
     }
-    
+
     // Get column structure from resource's list_structure or use defaults
     let list_structure = resource.list_structure().unwrap_or_else(|| get_default_list_structure());
     let columns = list_structure.get("columns")
@@ -467,7 +475,20 @@ pub async fn fetch_list_data(
             default_cols.push("created_at".to_string());
             default_cols
         });
-    
+
+    // Enforce per-role field visibility: if the resource restricts fields for the
+    // caller's roles, drop any column outside that set (keep "id" for row links).
+    let visible = resource.visible_fields_for_role(roles);
+    let columns: Vec<String> = if visible.is_empty() {
+        columns
+    } else {
+        let allow: HashSet<&str> = visible.iter().map(|s| s.as_str()).collect();
+        columns
+            .into_iter()
+            .filter(|c| c == "id" || allow.contains(c.as_str()))
+            .collect()
+    };
+
     // Convert MongoDB documents to the format expected by the template
     let rows: Vec<serde_json::Map<String, Value>> = documents
         .into_iter()
@@ -634,6 +655,7 @@ pub async fn fetch_single_item_data(
     resource: &Arc<Box<dyn AdmixResource>>,
     _req: &HttpRequest,
     id: &str,
+    roles: &[String],
 ) -> Result<serde_json::Map<String, Value>, Box<dyn std::error::Error + Send + Sync>> {
     let collection = resource.get_collection();
     
@@ -656,8 +678,17 @@ pub async fn fetch_single_item_data(
     
     // Get all permitted fields from the resource and extract them from the document
     let permitted_fields = resource.permit_keys();
-    
+
+    // Enforce per-role field visibility: when the resource restricts fields for the
+    // caller's roles, skip any field outside that set so it never reaches the page.
+    let visible = resource.visible_fields_for_role(roles);
+    let restrict = !visible.is_empty();
+    let allow: HashSet<&str> = visible.iter().map(|s| s.as_str()).collect();
+
     for field_name in permitted_fields {
+        if restrict && !allow.contains(field_name) {
+            continue;
+        }
         // Try different data types for each field
         if let Ok(string_val) = doc.get_str(field_name) {
             record.insert(field_name.to_string(), Value::String(string_val.to_string()));
