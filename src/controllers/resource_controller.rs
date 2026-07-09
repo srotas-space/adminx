@@ -390,10 +390,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         let mut form_data = HashMap::new();
                         let mut files = HashMap::new();
                         
-                        while let Some(mut field) = (match payload.try_next().await {
+                        while let Some(mut field) = match payload.try_next().await {
                             Ok(opt) => opt,
                             Err(e) => return HttpResponse::BadRequest().body(format!("Malformed multipart data: {}", e)),
-                        }) {
+                        } {
                             let name = field.name().unwrap_or("").to_string();
                             
                             // Extract filename first and clone it to avoid borrow issues
@@ -403,10 +403,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                                 .map(|f| f.to_string()); // Convert to owned String
                             
                             let mut data = Vec::new();
-                            while let Some(chunk) = (match field.try_next().await {
+                            while let Some(chunk) = match field.try_next().await {
                                 Ok(opt) => opt,
                                 Err(e) => return HttpResponse::BadRequest().body(format!("Error reading upload: {}", e)),
-                            }) {
+                            } {
                                 data.extend_from_slice(&chunk);
                             }
                             
@@ -447,10 +447,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                         let mut form_data = HashMap::new();
                         let mut files = HashMap::new();
                         
-                        while let Some(mut field) = (match payload.try_next().await {
+                        while let Some(mut field) = match payload.try_next().await {
                             Ok(opt) => opt,
                             Err(e) => return HttpResponse::BadRequest().body(format!("Malformed multipart data: {}", e)),
-                        }) {
+                        } {
                             let name = field.name().unwrap_or("").to_string();
                             
                             let filename = field
@@ -459,10 +459,10 @@ pub fn register_admix_resource_routes(resource: Box<dyn AdmixResource>) -> Scope
                                 .map(|f| f.to_string());
                             
                             let mut data = Vec::new();
-                            while let Some(chunk) = (match field.try_next().await {
+                            while let Some(chunk) = match field.try_next().await {
                                 Ok(opt) => opt,
                                 Err(e) => return HttpResponse::BadRequest().body(format!("Error reading upload: {}", e)),
-                            }) {
+                            } {
                                 data.extend_from_slice(&chunk);
                             }
                             
