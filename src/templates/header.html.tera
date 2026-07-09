@@ -24,7 +24,7 @@
             {% endif %}
             <a href="{{ base }}" class="flex items-center gap-2 font-semibold tracking-tight text-slate-900 dark:text-white hover:opacity-80 transition-opacity">
               <!-- Logo image -->
-              <img src="https://srotas-suite-space.s3.ap-south-1.amazonaws.com/nsadmin.png" alt="AdminX Logo" class="h-8 w-8 rounded-full shadow ring-2 ring-indigo-500/70">
+              <img src="https://srotasspace.s3.ap-south-1.amazonaws.com/srotas.svg" alt="AdminX Logo" class="h-8 w-8 rounded-full shadow ring-2 ring-indigo-500/70">
             </a>
           </div>
 

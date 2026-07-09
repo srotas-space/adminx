@@ -6,7 +6,7 @@
 [![Downloads](https://img.shields.io/crates/d/adminx)](https://crates.io/crates/adminx)
 [![Recent Downloads](https://img.shields.io/crates/dr/adminx)](https://crates.io/crates/adminx)
 
-![AdminX](https://srotas-suite-space.s3.ap-south-1.amazonaws.com/nsadmin.png)
+![AdminX](https://srotasspace.s3.ap-south-1.amazonaws.com/srotas.svg)
 
 [How to Use Sample Starter Template] (https://github.com/srotas-space/adminx-examples)
 
